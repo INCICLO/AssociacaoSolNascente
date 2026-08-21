@@ -586,3 +586,38 @@ document.addEventListener("DOMContentLoaded", () => {
     renderDashboard();
   }
 });
+
+// Gerenciamento de Tema (Modo Claro / Escuro)
+function initThemeToggle() {
+  const checkboxes = document.querySelectorAll('.theme-toggle-checkbox');
+  const savedTheme = localStorage.getItem('theme_preference');
+
+  // Aplica o tema salvo anteriormente
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark-mode');
+    checkboxes.forEach(cb => cb.checked = true);
+  }
+
+  checkboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', e => {
+      const isDark = e.target.checked;
+      
+      // Sincroniza todos os switches na tela
+      checkboxes.forEach(cb => cb.checked = isDark);
+
+      if (isDark) {
+        document.body.classList.add('dark-mode');
+        localStorage.setItem('theme_preference', 'dark');
+      } else {
+        document.body.classList.remove('dark-mode');
+        localStorage.setItem('theme_preference', 'light');
+      }
+    });
+  });
+}
+
+// Chame a função quando a página carregar
+document.addEventListener('DOMContentLoaded', () => {
+  initThemeToggle();
+  // ... restotante dos seus event listeners ...
+});
