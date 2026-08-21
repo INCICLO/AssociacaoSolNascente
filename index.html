@@ -152,33 +152,35 @@
       </section>
 
       <!-- ROTAS SECTION -->
-      <section id="rotas" class="section">
-        <div class="page-title">
-          <div>
-            <p class="eyebrow">LOGÍSTICA</p>
-            <h1>Planejamento de Rotas</h1>
-            <p>Agrupamento de pontos para otimização do itinerário de coleta.</p>
-          </div>
-          <button class="primary-btn" id="createRouteBtn">+ Gerar Rota</button>
-        </div>
+     <!-- ROTAS SECTION AUTOMATIZADA -->
+<section id="rotas" class="section">
+  <div class="page-title">
+    <div>
+      <p class="eyebrow">LOGÍSTICA INTELIGENTE</p>
+      <h1>Rotas & Frota do Dia</h1>
+      <p>Gerenciamento automático de itinerários e alocação de veículos.</p>
+    </div>
+    <button class="primary-btn" id="dispatchRouteBtn">🚀 Despachar Rota de Hoje</button>
+  </div>
 
-        <div class="route-layout">
-          <div class="panel">
-            <div class="panel-heading">
-              <div>
-                <h2>Pontos Disponíveis</h2>
-                <p>Selecione os registros agendados.</p>
-              </div>
-            </div>
-            <div id="routePoints"></div>
-          </div>
-          <div class="panel route-summary">
-            <h2>Resumo da Rota</h2>
-            <p id="routeSummary">Nenhum ponto selecionado.</p>
-            <ol id="routeOrder"></ol>
-          </div>
+  <div class="route-layout">
+    <div class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Itinerário Automatizado de Hoje</h2>
+          <p>Organizado automaticamente com base nas preferências do cliente.</p>
         </div>
-      </section>
+      </div>
+      <div id="routePoints"></div>
+    </div>
+    
+    <div class="panel route-summary">
+      <h2>Resumo da Operação</h2>
+      <p id="routeSummary">Calculando rotas...</p>
+      <ol id="routeOrder" style="padding-left: 18px; margin-top: 14px;"></ol>
+    </div>
+  </div>
+</section>
 
       <!-- CLIENTES SECTION -->
       <section id="clientes" class="section">
