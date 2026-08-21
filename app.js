@@ -658,7 +658,7 @@ function convertToLiters(quantityStr, unitStr, materialsStr = "") {
   return qty;
 }
 
-// 🚚 ROTEIRIZAÇÃO INTELIGENTE POR VEÍCULO COM REGRA DE FALLBACK
+// 🚚 ROTEIRIZAÇÃO INTELIGENTE COM FRACIONAMENTO E VEÍCULO DE APOIO
 function renderRoutes() {
   const container = document.getElementById("routesByVehicleContainer");
   if (!container) return;
@@ -687,93 +687,131 @@ function renderRoutes() {
     return;
   }
 
-  // Ordena os veículos do maior para o menor em capacidade máxima
+  // Ordena os veículos do maior para o menor
   const sortedVehicles = [...vehicles].sort((a, b) => b.capacityLiters - a.capacityLiters);
 
-  let unassignedPoints = [...todayPoints];
+  // Mapeia os pontos com seus volumes convertidos
+  let pendingItems = todayPoints.map(p => ({
+    ...p,
+    totalLiters: convertToLiters(p.quantity, p.unit, p.materials),
+    remainingLiters: convertToLiters(p.quantity, p.unit, p.materials)
+  }));
+
+  let vehicleAllocations = {};
+  sortedVehicles.forEach(v => {
+    vehicleAllocations[v.id] = { vehicle: v, trips: [] };
+  });
+
+  // Aloca as cargas entre os veículos cadastrados
+  sortedVehicles.forEach(vehicle => {
+    const minVol = parseFloat(vehicle.minVolumeLiters) || 0;
+    const maxCap = parseFloat(vehicle.capacityLiters) || 0;
+
+    // Filtra pontos ainda pendentes
+    let pointsToEvaluate = pendingItems.filter(item => item.remainingLiters > 0);
+    const totalPendingLiters = pointsToEvaluate.reduce((acc, i) => acc + i.remainingLiters, 0);
+
+    // Se o volume total pendente for menor que o mínimo do caminhão grande, pula para o veículo inferior
+    if (minVol > 0 && totalPendingLiters < minVol) {
+      return;
+    }
+
+    let currentTrip = { tripNumber: 1, items: [], usedLiters: 0 };
+
+    pointsToEvaluate.forEach(item => {
+      while (item.remainingLiters > 0) {
+        const spaceLeft = maxCap - currentTrip.usedLiters;
+
+        if (spaceLeft <= 0) {
+          // Fecha a viagem atual e abre uma viagem de apoio no mesmo veículo (se aplicável)
+          vehicleAllocations[vehicle.id].trips.push(currentTrip);
+          currentTrip = { tripNumber: vehicleAllocations[vehicle.id].trips.length + 1, items: [], usedLiters: 0 };
+        }
+
+        const currentSpace = maxCap - currentTrip.usedLiters;
+        if (currentSpace <= 0) break; // Passa para o próximo veículo/viagem
+
+        // Calcula quanto deste item cabe nesta viagem/veículo
+        const allocatedLiters = Math.min(item.remainingLiters, currentSpace);
+        
+        currentTrip.items.push({
+          ...item,
+          allocatedLiters: Math.round(allocatedLiters),
+          isPartial: allocatedLiters < item.totalLiters
+        });
+
+        currentTrip.usedLiters += allocatedLiters;
+        item.remainingLiters -= allocatedLiters;
+
+        // Se o veículo estiver cheio, encerra o loop desta viagem
+        if (currentTrip.usedLiters >= maxCap) {
+          vehicleAllocations[vehicle.id].trips.push(currentTrip);
+          currentTrip = { tripNumber: vehicleAllocations[vehicle.id].trips.length + 1, items: [], usedLiters: 0 };
+        }
+      }
+    });
+
+    if (currentTrip.items.length > 0) {
+      vehicleAllocations[vehicle.id].trips.push(currentTrip);
+    }
+  });
+
+  // GERAÇÃO DO HTML
   let routeOutputHTML = "";
 
   sortedVehicles.forEach(vehicle => {
-    const minRequiredVolume = parseFloat(vehicle.minVolumeLiters) || 0;
-    
-    // Calcula o volume total de todos os pontos pendentes para este dia
-    const totalPendingVolume = unassignedPoints.reduce((acc, p) => {
-      return acc + convertToLiters(p.quantity, p.unit, p.materials);
-    }, 0);
-
-    // REGRA DE OURO: Se o volume total pendente for menor que o volume mínimo exigido pelo veículo,
-    // pula este veículo obrigatoriamente e transfere tudo para o próximo (inferior).
-    if (minRequiredVolume > 0 && totalPendingVolume < minRequiredVolume) {
-      routeOutputHTML += `
-        <div class="panel" style="margin-bottom: 20px; opacity: 0.7; border-style: dashed;">
-          <div class="panel-heading">
-            <div>
-              <h2>🚚 ${escapeHTML(vehicle.name)} (${escapeHTML(vehicle.plate)}) — <span style="color:var(--orange);">Indisponível para Rota</span></h2>
-              <p>Volume total do dia (<strong>${Math.round(totalPendingVolume)} L</strong>) é inferior ao volume mínimo exigido para saída (<strong>${minRequiredVolume} Litros</strong>). Alocado para o veículo inferior.</p>
-            </div>
-          </div>
-        </div>
-      `;
-      return; // Pula a alocação deste veículo
-    }
-
-    let vehicleCapacityLeft = parseFloat(vehicle.capacityLiters);
-    let vehiclePoints = [];
-
-    unassignedPoints = unassignedPoints.filter(point => {
-      const pointLiters = convertToLiters(point.quantity, point.unit, point.materials);
-
-      if (pointLiters <= vehicleCapacityLeft) {
-        vehiclePoints.push({ ...point, calculatedLiters: Math.round(pointLiters) });
-        vehicleCapacityLeft -= pointLiters;
-        return false; // Remove da lista de pendentes
-      }
-      return true;
-    });
-
-    const totalAssignedLiters = vehiclePoints.reduce((acc, p) => acc + p.calculatedLiters, 0);
+    const alloc = vehicleAllocations[vehicle.id];
+    const totalVehicleLiters = alloc.trips.reduce((acc, t) => acc + t.usedLiters, 0);
 
     routeOutputHTML += `
       <div class="panel" style="margin-bottom: 20px;">
         <div class="panel-heading">
           <div>
             <h2>🚚 ${escapeHTML(vehicle.name)} (${escapeHTML(vehicle.plate)})</h2>
-            <p>Capacidade Máx: <strong>${vehicle.capacityLiters} L</strong> | Volume Estimado Alocado: <strong>${totalAssignedLiters} Litros</strong></p>
+            <p>Capacidade Máx por Viagem: <strong>${vehicle.capacityLiters} L</strong> | Volume Total Alocado: <strong>${Math.round(totalVehicleLiters)} Litros</strong></p>
           </div>
         </div>
-        ${vehiclePoints.length ? `
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Ordem</th><th>Código</th><th>Solicitante</th><th>Local</th><th>Carga Declarada</th><th>Volume Estimado</th></tr></thead>
-              <tbody>
-                ${vehiclePoints.map((p, index) => `
-                  <tr>
-                    <td><strong>${index + 1}º Ponto</strong></td>
-                    <td>${escapeHTML(p.id)}</td>
-                    <td>${escapeHTML(p.name)}</td>
-                    <td>${escapeHTML(p.type)} ${p.customLocationName ? `(${escapeHTML(p.customLocationName)})` : ''}</td>
-                    <td>${escapeHTML(p.quantity)} ${escapeHTML(p.unit)} (${escapeHTML(p.materials)})</td>
-                    <td><strong>≈ ${p.calculatedLiters} L</strong></td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
+        ${alloc.trips.length ? alloc.trips.map(trip => `
+          <div class="trip-block" style="margin-top: 12px; padding: 12px; background: var(--background); border-radius: 8px;">
+            <strong style="color: var(--navy); display:block; margin-bottom: 8px;">
+              📍 Viagem ${trip.tripNumber} ${trip.tripNumber > 1 ? '(Viagem de Apoio / Complementar)' : ''} — Total: ${Math.round(trip.usedLiters)} L
+            </strong>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Código</th><th>Solicitante</th><th>Local</th><th>Carga Declarada</th><th>Volume Carregado</th></tr></thead>
+                <tbody>
+                  ${trip.items.map(p => `
+                    <tr>
+                      <td><strong>${escapeHTML(p.id)}</strong></td>
+                      <td>${escapeHTML(p.name)}</td>
+                      <td>${escapeHTML(p.type)} ${p.customLocationName ? `(${escapeHTML(p.customLocationName)})` : ''}</td>
+                      <td>${escapeHTML(p.quantity)} ${escapeHTML(p.unit)} (${escapeHTML(p.materials)})</td>
+                      <td>
+                        <strong>≈ ${p.allocatedLiters} L</strong>
+                        ${p.isPartial ? `<br><small style="color:var(--orange);font-weight:bold;">(Carga Fracionada)</small>` : ''}
+                      </td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
           </div>
-        ` : `<p style="color:var(--muted);">Nenhum ponto atende aos critérios deste veículo hoje.</p>`}
+        `).join("") : `<p style="color:var(--muted);">Nenhum ponto atende aos critérios deste veículo hoje.</p>`}
       </div>
     `;
   });
 
-  if (unassignedPoints.length) {
+  // Exibe itens excedentes (se houver)
+  const remainingUnassigned = pendingItems.filter(i => i.remainingLiters > 0);
+  if (remainingUnassigned.length) {
     routeOutputHTML += `
       <div class="panel" style="border-color: var(--orange);">
         <h2 style="color: var(--orange);">⚠️ Coletas Pendentes / Excedentes</h2>
-        <p>Estes pontos não foram alocados devido ao limite de capacidade da frota:</p>
+        <p>Volumes excedentes que requerem viagens adicionais:</p>
         <ul style="margin-top:10px;">
-          ${unassignedPoints.map(p => {
-            const l = Math.round(convertToLiters(p.quantity, p.unit, p.materials));
-            return `<li><strong>${p.name}</strong> - ${p.quantity} ${p.unit} (≈ ${l} Litros)</li>`;
-          }).join("")}
+          ${remainingUnassigned.map(p => `
+            <li><strong>${p.name}</strong> - Restante: ≈ ${Math.round(p.remainingLiters)} Litros</li>
+          `).join("")}
         </ul>
       </div>
     `;
