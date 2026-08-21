@@ -1,7 +1,7 @@
 const STORAGE_KEY = "sol_nascente_solicitacoes_v1";
 const VEHICLES_STORAGE_KEY = "sol_nascente_veiculos_v1";
 
-// DADOS PADRÃO
+// DADOS PADRÃO DE EXEMPLO
 const defaultRequests = [
   {
     id: "SOL-2026-000001",
@@ -12,8 +12,8 @@ const defaultRequests = [
     latitude: "-3.3752",
     longitude: "-39.2689",
     materials: "Papel, Papelão",
-    quantity: "50",
-    unit: "Kg",
+    quantity: "5",
+    unit: "Sacos de 100L",
     frequency: "Semanal (Sexta-feira)",
     notes: "Coleta no galpão lateral",
     status: "AGENDADA",
@@ -22,8 +22,8 @@ const defaultRequests = [
 ];
 
 const defaultVehicles = [
-  { id: "VEH-1", name: "Triciclo / Reboque", plate: "TRI-01", capacityKg: 300, minVolumeKg: 0 },
-  { id: "VEH-2", name: "Caminhão Baú", plate: "CAM-01", capacityKg: 2000, minVolumeKg: 150 }
+  { id: "VEH-1", name: "Triciclo / Reboque", plate: "TRI-01", capacityLiters: 1000, minVolumeLiters: 0 },
+  { id: "VEH-2", name: "Caminhão Baú", plate: "CAM-01", capacityLiters: 10000, minVolumeLiters: 2000 }
 ];
 
 let requests = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null") || defaultRequests;
@@ -597,7 +597,7 @@ function renderVehicles() {
   container.innerHTML = `
     <table>
       <thead>
-        <tr><th>Identificador</th><th>Nome / Modelo</th><th>Placa</th><th>Capacidade Máx.</th><th>Volume Mín. para Saída</th><th>Ação</th></tr>
+        <tr><th>Identificador</th><th>Nome / Modelo</th><th>Placa</th><th>Capacidade Máx.</th><th>Volume Mín. de Saída</th><th>Ação</th></tr>
       </thead>
       <tbody>
         ${vehicles.map(v => `
@@ -605,8 +605,8 @@ function renderVehicles() {
             <td><strong>${escapeHTML(v.id)}</strong></td>
             <td>${escapeHTML(v.name)}</td>
             <td>${escapeHTML(v.plate)}</td>
-            <td><strong>${escapeHTML(v.capacityKg)} Kg</strong></td>
-            <td>${escapeHTML(v.minVolumeKg)} Kg</td>
+            <td><strong>${escapeHTML(v.capacityLiters)} Litros</strong></td>
+            <td>${escapeHTML(v.minVolumeLiters)} Litros</td>
             <td><button class="secondary-btn" onclick="deleteVehicle('${v.id}')">Excluir</button></td>
           </tr>
         `).join("")}
@@ -622,7 +622,7 @@ function deleteVehicle(id) {
   toast("Veículo removido com sucesso.");
 }
 
-// ROTEIRIZAÇÃO INTELIGENTE POR VEÍCULO
+// ROTEIRIZAÇÃO INTELIGENTE POR VEÍCULO (EM LITROS)
 function renderRoutes() {
   const container = document.getElementById("routesByVehicleContainer");
   if (!container) return;
@@ -632,7 +632,7 @@ function renderRoutes() {
   const currentDayName = weekdays[today.getDay()];
   const formattedTodayDate = today.toLocaleDateString('pt-BR');
 
-  // Filtra as solicitações agendadas para o dia
+  // Filtra solicitações agendadas para o dia
   const todayPoints = requests.filter(r => {
     if (r.status !== "AGENDADA") return false;
     if (!r.frequency) return false;
@@ -651,41 +651,44 @@ function renderRoutes() {
     return;
   }
 
-  // Ordena os veículos: os que exigem maior volume mínimo primeiro (ex: Caminhão antes do Triciclo)
-  const sortedVehicles = [...vehicles].sort((a, b) => b.minVolumeKg - a.minVolumeKg);
+  // Ordena os veículos: os que exigem maior volume mínimo de saída primeiro (Caminhão antes do Triciclo)
+  const sortedVehicles = [...vehicles].sort((a, b) => b.minVolumeLiters - a.minVolumeLiters);
 
   let unassignedPoints = [...todayPoints];
   let routeOutputHTML = "";
 
   sortedVehicles.forEach(vehicle => {
-    let vehicleCapacityLeft = parseFloat(vehicle.capacityKg);
+    let vehicleCapacityLeft = parseFloat(vehicle.capacityLiters);
     let vehiclePoints = [];
 
     unassignedPoints = unassignedPoints.filter(point => {
-      const pointWeight = parseFloat(point.quantity) || 0;
+      let pointLiters = parseFloat(point.quantity) || 0;
+      if (point.unit && point.unit.includes("Sacos")) {
+        pointLiters = pointLiters * 100; // Converte Sacos de 100L
+      }
 
-      if (pointWeight >= parseFloat(vehicle.minVolumeKg) && pointWeight <= vehicleCapacityLeft) {
-        vehiclePoints.push(point);
-        vehicleCapacityLeft -= pointWeight;
+      if (pointLiters >= parseFloat(vehicle.minVolumeLiters) && pointLiters <= vehicleCapacityLeft) {
+        vehiclePoints.push({ ...point, calculatedLiters: pointLiters });
+        vehicleCapacityLeft -= pointLiters;
         return false;
       }
       return true;
     });
 
-    const totalAssignedWeight = vehiclePoints.reduce((acc, p) => acc + (parseFloat(p.quantity) || 0), 0);
+    const totalAssignedLiters = vehiclePoints.reduce((acc, p) => acc + p.calculatedLiters, 0);
 
     routeOutputHTML += `
       <div class="panel" style="margin-bottom: 20px;">
         <div class="panel-heading">
           <div>
             <h2>🚚 ${escapeHTML(vehicle.name)} (${escapeHTML(vehicle.plate)})</h2>
-            <p>Capacidade Máx: <strong>${vehicle.capacityKg} Kg</strong> | Carga Alocada: <strong>${totalAssignedWeight} Kg</strong></p>
+            <p>Capacidade Máx: <strong>${vehicle.capacityLiters} Litros</strong> | Volume Alocado: <strong>${totalAssignedLiters} Litros</strong></p>
           </div>
         </div>
         ${vehiclePoints.length ? `
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Ordem</th><th>Código</th><th>Solicitante</th><th>Local</th><th>Carga</th></tr></thead>
+              <thead><tr><th>Ordem</th><th>Código</th><th>Solicitante</th><th>Local</th><th>Carga Declarada</th></tr></thead>
               <tbody>
                 ${vehiclePoints.map((p, index) => `
                   <tr>
@@ -708,7 +711,7 @@ function renderRoutes() {
     routeOutputHTML += `
       <div class="panel" style="border-color: var(--orange);">
         <h2 style="color: var(--orange);">⚠️ Coletas Pendentes / Excedentes</h2>
-        <p>Estes pontos não foram alocados devido à capacidade máxima ou exigência de volume:</p>
+        <p>Estes pontos não foram alocados devido ao limite de capacidade dos veículos:</p>
         <ul style="margin-top:10px;">
           ${unassignedPoints.map(p => `<li><strong>${p.name}</strong> - ${p.quantity} ${p.unit} (${p.frequency})</li>`).join("")}
         </ul>
@@ -771,7 +774,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("searchInput")?.addEventListener("input", renderRequests);
   document.getElementById("statusFilter")?.addEventListener("change", renderRequests);
 
-  // Modal Veículos Eventos
+  // Eventos do Modal de Veículos
   document.getElementById("novoVeiculoBtn")?.addEventListener("click", () => {
     document.getElementById("vehicleModal")?.classList.remove("hidden");
   });
@@ -789,8 +792,8 @@ document.addEventListener("DOMContentLoaded", () => {
       id: `VEH-${vehicles.length + 1}`,
       name: data.name,
       plate: data.plate,
-      capacityKg: parseFloat(data.capacityKg),
-      minVolumeKg: parseFloat(data.minVolumeKg)
+      capacityLiters: parseFloat(data.capacityLiters),
+      minVolumeLiters: parseFloat(data.minVolumeLiters)
     };
 
     vehicles.push(newVehicle);
