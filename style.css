@@ -683,3 +683,9 @@ body.public-mode .content {
   border-bottom: 1px solid var(--border);
   padding-bottom: 4px;
 }
+
+/* AJUSTES DE NAVEGAÇÃO E TABELA DE VEÍCULOS */
+#vehiclesList table button {
+  padding: 6px 12px;
+  font-size: 12px;
+}
