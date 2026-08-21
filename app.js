@@ -622,7 +622,7 @@ function deleteVehicle(id) {
   toast("Veículo removido com sucesso.");
 }
 
-// 🧮 FUNÇÃO DE CONVERSÃO DE UNIDADES/MATERIAIS PARA LITROS
+// 🧮 FUNÇÃO DE CONVERSÃO INTELIGENTE DE UNIDADES/MATERIAIS PARA LITROS
 function convertToLiters(quantityStr, unitStr, materialsStr = "") {
   const qty = parseFloat(quantityStr) || 0;
   if (qty <= 0) return 0;
@@ -630,10 +630,10 @@ function convertToLiters(quantityStr, unitStr, materialsStr = "") {
   const unit = (unitStr || "").toLowerCase();
   const mat = (materialsStr || "").toLowerCase();
 
-  // 1. Unidades volumétricas padronizadas
+  // 1. Unidades volumétricas diretas
   if (unit.includes("saco")) return qty * 100;      // Sacos de 100 Litros
   if (unit.includes("bombona")) return qty * 200;   // Bombona padrão 200L
-  if (unit.includes("bigbag")) return qty * 1000;   // BigBag padrão 1000L (1m³)
+  if (unit.includes("bigbag")) return qty * 1000;   // BigBag padrão 1000L
   if (unit.includes("caixa")) return qty * 50;      // Caixa média 50L
 
   // 2. Conversão de Kg para Litros via Densidade Aparente Média
@@ -641,7 +641,7 @@ function convertToLiters(quantityStr, unitStr, materialsStr = "") {
     let densityKgPerL = 0.15; // Densidade média padrão (0,15 kg/L)
 
     if (mat.includes("plástico") || mat.includes("pet")) {
-      densityKgPerL = 0.05; // Plástico é muito leve e ocupa muito espaço
+      densityKgPerL = 0.05; // Plástico é leve e ocupa muito espaço
     } else if (mat.includes("papel") || mat.includes("papelão")) {
       densityKgPerL = 0.10;
     } else if (mat.includes("metal") || mat.includes("latas")) {
@@ -649,17 +649,16 @@ function convertToLiters(quantityStr, unitStr, materialsStr = "") {
     } else if (mat.includes("eletrônicos")) {
       densityKgPerL = 0.25;
     } else if (mat.includes("vidro")) {
-      densityKgPerL = 0.35; // Vidro é denso/pesado
+      densityKgPerL = 0.35; // Vidro é pesado
     }
 
-    // Volume (Litros) = Massa (Kg) / Densidade (Kg/L)
     return qty / densityKgPerL;
   }
 
-  return qty; // Retorno preventivo
+  return qty;
 }
 
-// 🚚 ROTEIRIZAÇÃO INTELIGENTE COM CONVERSÃO DE DENSIDADE E VOLUME
+// 🚚 ROTEIRIZAÇÃO INTELIGENTE POR VEÍCULO COM REGRA DE FALLBACK
 function renderRoutes() {
   const container = document.getElementById("routesByVehicleContainer");
   if (!container) return;
@@ -688,21 +687,43 @@ function renderRoutes() {
     return;
   }
 
-  // Ordena os veículos: os que exigem maior volume mínimo de saída primeiro (Caminhão antes do Triciclo)
-  const sortedVehicles = [...vehicles].sort((a, b) => b.minVolumeLiters - a.minVolumeLiters);
+  // Ordena os veículos do maior para o menor em capacidade máxima
+  const sortedVehicles = [...vehicles].sort((a, b) => b.capacityLiters - a.capacityLiters);
 
   let unassignedPoints = [...todayPoints];
   let routeOutputHTML = "";
 
   sortedVehicles.forEach(vehicle => {
+    const minRequiredVolume = parseFloat(vehicle.minVolumeLiters) || 0;
+    
+    // Calcula o volume total de todos os pontos pendentes para este dia
+    const totalPendingVolume = unassignedPoints.reduce((acc, p) => {
+      return acc + convertToLiters(p.quantity, p.unit, p.materials);
+    }, 0);
+
+    // REGRA DE OURO: Se o volume total pendente for menor que o volume mínimo exigido pelo veículo,
+    // pula este veículo obrigatoriamente e transfere tudo para o próximo (inferior).
+    if (minRequiredVolume > 0 && totalPendingVolume < minRequiredVolume) {
+      routeOutputHTML += `
+        <div class="panel" style="margin-bottom: 20px; opacity: 0.7; border-style: dashed;">
+          <div class="panel-heading">
+            <div>
+              <h2>🚚 ${escapeHTML(vehicle.name)} (${escapeHTML(vehicle.plate)}) — <span style="color:var(--orange);">Indisponível para Rota</span></h2>
+              <p>Volume total do dia (<strong>${Math.round(totalPendingVolume)} L</strong>) é inferior ao volume mínimo exigido para saída (<strong>${minRequiredVolume} Litros</strong>). Alocado para o veículo inferior.</p>
+            </div>
+          </div>
+        </div>
+      `;
+      return; // Pula a alocação deste veículo
+    }
+
     let vehicleCapacityLeft = parseFloat(vehicle.capacityLiters);
     let vehiclePoints = [];
 
     unassignedPoints = unassignedPoints.filter(point => {
-      // Executa a conversão precisa para Litros
       const pointLiters = convertToLiters(point.quantity, point.unit, point.materials);
 
-      if (pointLiters >= parseFloat(vehicle.minVolumeLiters) && pointLiters <= vehicleCapacityLeft) {
+      if (pointLiters <= vehicleCapacityLeft) {
         vehiclePoints.push({ ...point, calculatedLiters: Math.round(pointLiters) });
         vehicleCapacityLeft -= pointLiters;
         return false; // Remove da lista de pendentes
@@ -747,7 +768,7 @@ function renderRoutes() {
     routeOutputHTML += `
       <div class="panel" style="border-color: var(--orange);">
         <h2 style="color: var(--orange);">⚠️ Coletas Pendentes / Excedentes</h2>
-        <p>Estes pontos não foram alocados devido ao limite de capacidade dos veículos:</p>
+        <p>Estes pontos não foram alocados devido ao limite de capacidade da frota:</p>
         <ul style="margin-top:10px;">
           ${unassignedPoints.map(p => {
             const l = Math.round(convertToLiters(p.quantity, p.unit, p.materials));
