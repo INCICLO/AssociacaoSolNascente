@@ -146,7 +146,6 @@ function buildFormHTML(formId) {
           <label class="material-checkbox"><input type="checkbox" name="materials_list" id="otherMaterialCheckbox" value="Outros"> Outros</label>
         </div>
 
-        <!-- CAMPO ADICIONADO PARA ESPECIFICAR "OUTROS" -->
         <div id="otherMaterialWrap" class="hidden" style="margin-top: 12px;">
           <label class="form-label">Qual resíduo? Especificar: *
             <input name="otherMaterialText" id="otherMaterialText" placeholder="Ex: Óleo de cozinha usado, Baterias..." class="big-input">
@@ -163,29 +162,70 @@ function buildFormHTML(formId) {
         <label class="form-label flex-1">Unidade de Medida *
           <select name="unit" required class="big-select">
             <option value="Kg">Kg (Quilogramas)</option>
-            <option value="Litros">Litros</option>
             <option value="Sacos de 100L">Sacos de 100 Litros</option>
             <option value="BigBags">BigBags</option>
             <option value="Caixas">Caixas</option>
-            <option value="Unidades">Unidades</option>
+            <option value="Bombonas">Bombonas</option>
           </select>
         </label>
       </div>
 
-      <!-- 6. CANAL DE CONHECIMENTO -->
+      <!-- 6. FREQUÊNCIA E AGENDAMENTO -->
       <div class="form-group-block">
-        <span class="form-block-title">6. Origem da Informação</span>
-        <label class="form-label">Como tomou conhecimento da Associação Sol Nascente? *
-          <select name="source" required class="big-select">
-            <option value="">Selecione uma opção...</option>
-            <option value="Redes Sociais (Instagram / Facebook)">Redes Sociais (Instagram / Facebook)</option>
-            <option value="WhatsApp / Mensagem">WhatsApp / Mensagem Instantânea</option>
-            <option value="Indicação de Amigo / Vizinho">Indicação de Amigo / Vizinho</option>
-            <option value="Panfletos / Cartaz">Divulgação Impressa / Cartaz</option>
-            <option value="Evento Local">Evento Institucional / Cidade</option>
-            <option value="Outro">Outro</option>
+        <span class="form-block-title">6. Frequência e Agendamento da Coleta</span>
+        <label class="form-label">Com que frequência a coleta deve acontecer? *
+          <select name="frequency" id="frequencySelect" required class="big-select">
+            <option value="">Selecione a periodicidade...</option>
+            <option value="Única">Coleta Pontual (Uma única vez)</option>
+            <option value="Diária">Uma vez por dia (Diária)</option>
+            <option value="Semanal">Uma vez por semana</option>
+            <option value="Quinzenal">Uma vez a cada 15 dias (Quinzenal)</option>
+            <option value="Mensal">Uma vez no mês (Mensal)</option>
           </select>
         </label>
+
+        <!-- Coleta Única (Calendário) -->
+        <div id="singleDateWrap" class="hidden frequency-subwrap">
+          <label class="form-label">Data Preferencial para Coleta *
+            <input type="date" name="preferred_date" id="preferredDateInput" class="big-input">
+          </label>
+        </div>
+
+        <!-- Coleta Semanal / Quinzenal (Dias da Semana) -->
+        <div id="weeklyDaysWrap" class="hidden frequency-subwrap">
+          <label class="form-label">Dia(s) preferencial(is) da semana para coleta *</label>
+          <div class="days-grid">
+            <label class="day-checkbox"><input type="checkbox" name="preferred_days" value="Segunda-feira"> Seg</label>
+            <label class="day-checkbox"><input type="checkbox" name="preferred_days" value="Terça-feira"> Ter</label>
+            <label class="day-checkbox"><input type="checkbox" name="preferred_days" value="Quarta-feira"> Quar</label>
+            <label class="day-checkbox"><input type="checkbox" name="preferred_days" value="Quinta-feira"> Quin</label>
+            <label class="day-checkbox"><input type="checkbox" name="preferred_days" value="Sexta-feira"> Sex</label>
+            <label class="day-checkbox"><input type="checkbox" name="preferred_days" value="Sábado"> Sáb</label>
+          </div>
+        </div>
+
+        <!-- Coleta Mensal (Semana do Mês + Dia) -->
+        <div id="monthlyWrap" class="hidden frequency-subwrap row-group">
+          <label class="form-label flex-1">Qual semana do mês? *
+            <select name="monthly_week" id="monthlyWeekSelect" class="big-select">
+              <option value="1ª Semana">1ª Semana do mês</option>
+              <option value="2ª Semana">2ª Semana do mês</option>
+              <option value="3ª Semana">3ª Semana do mês</option>
+              <option value="4ª Semana">4ª Semana do mês</option>
+            </select>
+          </label>
+
+          <label class="form-label flex-1">Em qual dia da semana? *
+            <select name="monthly_day" id="monthlyDaySelect" class="big-select">
+              <option value="Segunda-feira">Segunda-feira</option>
+              <option value="Terça-feira">Terça-feira</option>
+              <option value="Quarta-feira">Quarta-feira</option>
+              <option value="Quinta-feira">Quinta-feira</option>
+              <option value="Sexta-feira">Sexta-feira</option>
+              <option value="Sábado">Sábado</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <!-- 7. OBSERVAÇÕES ADICIONAIS -->
@@ -233,7 +273,7 @@ function initFormEvents(formId) {
     });
   }
 
-  // Toggle do campo "Outros" para especificação de resíduos
+  // Toggle do campo "Outros"
   const otherCheckbox = form.querySelector('#otherMaterialCheckbox');
   const otherWrap = form.querySelector('#otherMaterialWrap');
   const otherInput = form.querySelector('#otherMaterialText');
@@ -249,6 +289,38 @@ function initFormEvents(formId) {
           otherInput.required = false;
           otherInput.value = '';
         }
+      }
+    });
+  }
+
+  // Lógica de Periodicidade Dinâmica
+  const frequencySelect = form.querySelector('#frequencySelect');
+  const singleDateWrap = form.querySelector('#singleDateWrap');
+  const weeklyDaysWrap = form.querySelector('#weeklyDaysWrap');
+  const monthlyWrap = form.querySelector('#monthlyWrap');
+  const preferredDateInput = form.querySelector('#preferredDateInput');
+
+  if (frequencySelect) {
+    if (preferredDateInput) {
+      preferredDateInput.min = new Date().toISOString().split('T')[0];
+    }
+
+    frequencySelect.addEventListener('change', () => {
+      const val = frequencySelect.value;
+
+      singleDateWrap.classList.add('hidden');
+      weeklyDaysWrap.classList.add('hidden');
+      monthlyWrap.classList.add('hidden');
+
+      if (preferredDateInput) preferredDateInput.required = false;
+
+      if (val === 'Única') {
+        singleDateWrap.classList.remove('hidden');
+        if (preferredDateInput) preferredDateInput.required = true;
+      } else if (val === 'Semanal' || val === 'Quinzenal') {
+        weeklyDaysWrap.classList.remove('hidden');
+      } else if (val === 'Mensal') {
+        monthlyWrap.classList.remove('hidden');
       }
     });
   }
@@ -274,13 +346,34 @@ function initFormEvents(formId) {
       return;
     }
 
-    // Se "Outros" estiver marcado, anexa a especificação digitada pelo usuário
     if (otherCheckbox && otherCheckbox.checked && otherInput && otherInput.value.trim() !== '') {
       checkedMaterials = checkedMaterials.map(m => m === 'Outros' ? `Outros (${otherInput.value.trim()})` : m);
     }
 
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
+
+    // Validação da Periodicidade
+    const freqVal = data.frequency;
+    let frequencyText = freqVal;
+
+    if (freqVal === 'Única') {
+      if (!data.preferred_date) {
+        toast("Por favor, selecione a data preferencial para a coleta única.");
+        return;
+      }
+      const formattedDate = data.preferred_date.split('-').reverse().join('/');
+      frequencyText = `Única (${formattedDate})`;
+    } else if (freqVal === 'Semanal' || freqVal === 'Quinzenal') {
+      const selectedDays = [...form.querySelectorAll('input[name="preferred_days"]:checked')].map(d => d.value);
+      if (selectedDays.length === 0) {
+        toast("Selecione ao menos um dia da semana para a coleta.");
+        return;
+      }
+      frequencyText = `${freqVal} (${selectedDays.join(', ')})`;
+    } else if (freqVal === 'Mensal') {
+      frequencyText = `Mensal (${data.monthly_week} - ${data.monthly_day})`;
+    }
 
     const request = {
       id: nextId(),
@@ -293,7 +386,7 @@ function initFormEvents(formId) {
       materials: checkedMaterials.join(', '),
       quantity: data.quantity,
       unit: data.unit,
-      source: data.source,
+      frequency: frequencyText,
       notes: data.notes || '',
       status: "NOVA",
       createdAt: new Date().toISOString()
