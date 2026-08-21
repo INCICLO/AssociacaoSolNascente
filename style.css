@@ -545,4 +545,141 @@ body.public-mode .content {
   .row-group { flex-direction: column; }
   .materials-grid { grid-template-columns: 1fr 1fr; }
   .client-grid { grid-template-columns: 1fr; }
+
+   /* ==========================================================================
+   MODO ESCURO (DARK MODE) & TOGGLE SWITCH
+   ========================================================================== */
+
+/* Variáveis para o Modo Escuro */
+body.dark-mode {
+  --background: #121624;
+  --white: #1a2035;
+  --text: #e2eaf8;
+  --muted: #a0aec0;
+  --border: #2d3748;
+  --navy: #ffffff;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Mantém os blocos e cards legíveis no modo escuro */
+body.dark-mode .stat-card,
+body.dark-mode .panel,
+body.dark-mode .client-card,
+body.dark-mode .modal-card,
+body.dark-mode .public-card,
+body.dark-mode .form-group-block,
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+  background-color: #1a2035 !important;
+  color: #e2eaf8 !important;
+  border-color: #2d3748 !important;
+}
+
+body.dark-mode .material-checkbox {
+  background-color: #1a2035 !important;
+  color: #e2eaf8 !important;
+  border-color: #2d3748 !important;
+}
+
+/* REGRA SOLICITADA: Mantém o cabeçalho das logos sempre branco */
+body.dark-mode .public-header {
+  background-color: #ffffff !important;
+  border-color: #d2d8e0 !important;
+}
+
+body.dark-mode .public-header h1,
+body.dark-mode .public-header p {
+  color: #242a55 !important;
+}
+
+body.dark-mode .public-header .public-sub {
+  color: #5e6875 !important;
+}
+
+/* ESTILIZAÇÃO DO TOGGLE SWITCH */
+.theme-toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.theme-toggle-public {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  z-index: 999;
+  background: var(--white);
+  padding: 8px 14px;
+  border-radius: 30px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #ccc;
+  transition: .3s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--orange);
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+/* REGRA SOLICITADA: Centralização do texto no botão de submeter */
+.submit-btn {
+  font-size: 15px !important;
+  padding: 16px !important;
+  border-radius: 8px !important;
+  background-color: var(--orange) !important;
+  color: white !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  margin-top: 8px;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(235, 91, 43, 0.25);
+  
+  /* Centralização Alinhada */
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center !important;
+  width: 100% !important;
+}
 }
