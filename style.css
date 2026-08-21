@@ -686,3 +686,34 @@ input:checked + .slider {
 input:checked + .slider:before {
   transform: translateX(22px);
 }
+
+/* ==========================================================================
+   PRESERVAÇÃO DA TOPBAR NO MODO ESCURO
+   ========================================================================== */
+
+/* Mantém o topo 100% igual ao modo claro */
+body.dark-mode .topbar {
+  background-color: #ffffff !important;
+  border-bottom-color: var(--border) !important;
+}
+
+body.dark-mode .brand strong {
+  color: #242a55 !important; /* Retorna ao azul escuro original */
+}
+
+body.dark-mode .brand span {
+  color: #5e6875 !important; /* Retorna ao cinza original */
+}
+
+body.dark-mode .brand-title-wrap {
+  border-left-color: var(--border) !important;
+}
+
+/* Mantém o menu hambúrguer e botão do switch legíveis sobre o fundo branco */
+body.dark-mode .menu-toggle {
+  color: #242a55 !important;
+}
+
+body.dark-mode .topbar .theme-toggle-wrap {
+  color: #242a55 !important;
+}
