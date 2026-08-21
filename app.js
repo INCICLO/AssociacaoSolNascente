@@ -1,5 +1,7 @@
 const STORAGE_KEY = "sol_nascente_solicitacoes_v1";
+const VEHICLES_STORAGE_KEY = "sol_nascente_veiculos_v1";
 
+// DADOS PADRÃO
 const defaultRequests = [
   {
     id: "SOL-2026-000001",
@@ -12,17 +14,27 @@ const defaultRequests = [
     materials: "Papel, Papelão",
     quantity: "50",
     unit: "Kg",
-    source: "Redes Sociais (Instagram / Facebook)",
+    frequency: "Semanal (Sexta-feira)",
     notes: "Coleta no galpão lateral",
-    status: "NOVA",
+    status: "AGENDADA",
     createdAt: new Date().toISOString()
   }
 ];
 
+const defaultVehicles = [
+  { id: "VEH-1", name: "Triciclo / Reboque", plate: "TRI-01", capacityKg: 300, minVolumeKg: 0 },
+  { id: "VEH-2", name: "Caminhão Baú", plate: "CAM-01", capacityKg: 2000, minVolumeKg: 150 }
+];
+
 let requests = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null") || defaultRequests;
+let vehicles = JSON.parse(localStorage.getItem(VEHICLES_STORAGE_KEY) || "null") || defaultVehicles;
 
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
+}
+
+function saveVehicles() {
+  localStorage.setItem(VEHICLES_STORAGE_KEY, JSON.stringify(vehicles));
 }
 
 function nextId() {
@@ -75,6 +87,7 @@ function showSection(sectionId) {
 
   if (sectionId === "dashboard") renderDashboard();
   if (sectionId === "solicitacoes") renderRequests();
+  if (sectionId === "veiculos") renderVehicles();
   if (sectionId === "rotas") renderRoutes();
   if (sectionId === "clientes") renderClients();
 }
@@ -245,7 +258,6 @@ function initFormEvents(formId) {
   const form = document.getElementById(formId);
   if (!form) return;
 
-  // Mask Phone
   const phoneInput = form.querySelector('.phone-mask');
   if (phoneInput) {
     phoneInput.addEventListener('input', e => {
@@ -253,7 +265,6 @@ function initFormEvents(formId) {
     });
   }
 
-  // Custom location field display toggle
   const typeSelect = form.querySelector('.type-select');
   const customWrap = form.querySelector('.custom-location-wrap');
   const customInput = customWrap ? customWrap.querySelector('input') : null;
@@ -273,7 +284,6 @@ function initFormEvents(formId) {
     });
   }
 
-  // Toggle do campo "Outros"
   const otherCheckbox = form.querySelector('#otherMaterialCheckbox');
   const otherWrap = form.querySelector('#otherMaterialWrap');
   const otherInput = form.querySelector('#otherMaterialText');
@@ -293,7 +303,6 @@ function initFormEvents(formId) {
     });
   }
 
-  // Lógica de Periodicidade Dinâmica
   const frequencySelect = form.querySelector('#frequencySelect');
   const singleDateWrap = form.querySelector('#singleDateWrap');
   const weeklyDaysWrap = form.querySelector('#weeklyDaysWrap');
@@ -325,10 +334,8 @@ function initFormEvents(formId) {
     });
   }
 
-  // Init Leaflet Map
   initMap(formId);
 
-  // Form Submit
   form.addEventListener('submit', e => {
     e.preventDefault();
 
@@ -353,7 +360,6 @@ function initFormEvents(formId) {
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
 
-    // Validação da Periodicidade
     const freqVal = data.frequency;
     let frequencyText = freqVal;
 
@@ -534,7 +540,7 @@ function tableHTML(data, withActions = true) {
   if (!data.length) return `<div class="empty-state"><h2>Nenhuma solicitação encontrada</h2><p>Não há registros gravados no sistema.</p></div>`;
   return `<table>
     <thead><tr>
-      <th>Código</th><th>Solicitante</th><th>Local</th><th>Materiais / Quantidade</th><th>Origem</th><th>Status</th>${withActions ? "<th>Ação</th>" : ""}
+      <th>Código</th><th>Solicitante</th><th>Local</th><th>Materiais / Quantidade</th><th>Frequência</th><th>Status</th>${withActions ? "<th>Ação</th>" : ""}
     </tr></thead>
     <tbody>
       ${data.map(r => `<tr>
@@ -545,7 +551,7 @@ function tableHTML(data, withActions = true) {
           <small>${r.latitude && r.longitude ? `<a href="https://maps.google.com/?q=${r.latitude},${r.longitude}" target="_blank" style="color:var(--orange);font-weight:bold;text-decoration:none;">Visualizar no Mapa</a>` : 'Sem coordenadas'}</small>
         </td>
         <td>${escapeHTML(r.materials)}<br><small><strong>Total:</strong> ${escapeHTML(r.quantity || '-')} ${escapeHTML(r.unit || '')}</small></td>
-        <td><small>${escapeHTML(r.source || 'Não informada')}</small></td>
+        <td><small>${escapeHTML(r.frequency || 'Não informada')}</small></td>
         <td>${statusBadge(r.status)}</td>
         ${withActions ? `<td><select class="inline-status" data-id="${escapeHTML(r.id)}">
           ${["NOVA","EM ANÁLISE","AGENDADA","EM ROTA","COLETADA","FINALIZADA"].map(s => `<option ${s===r.status ? "selected":""}>${s}</option>`).join("")}
@@ -559,7 +565,7 @@ function renderRequests() {
   const query = document.getElementById("searchInput").value.trim().toLowerCase();
   const status = document.getElementById("statusFilter").value;
   const filtered = requests.filter(r => {
-    const text = `${r.id} ${r.name} ${r.phone} ${r.type} ${r.customLocationName} ${r.materials} ${r.source}`.toLowerCase();
+    const text = `${r.id} ${r.name} ${r.phone} ${r.type} ${r.customLocationName} ${r.materials} ${r.frequency}`.toLowerCase();
     return (!query || text.includes(query)) && (!status || r.status === status);
   });
   document.getElementById("requestsTable").innerHTML = tableHTML(filtered, true);
@@ -578,33 +584,139 @@ function renderRequests() {
   });
 }
 
-function renderRoutes() {
-  const scheduled = requests.filter(r => r.status === "AGENDADA");
-  const container = document.getElementById("routePoints");
-  if (!scheduled.length) {
-    container.innerHTML = `<div class="empty-state"><h2>Nenhum ponto disponível</h2><p>Altere o status de uma solicitação para "AGENDADA" para incluí-la na rota.</p></div>`;
-    document.getElementById("routeSummary").textContent = "Nenhum ponto selecionado.";
-    document.getElementById("routeOrder").innerHTML = "";
+// CADASTRO E GESTÃO DE VEÍCULOS
+function renderVehicles() {
+  const container = document.getElementById("vehiclesList");
+  if (!container) return;
+
+  if (!vehicles.length) {
+    container.innerHTML = `<div class="empty-state"><h2>Nenhum veículo cadastrado</h2><p>Cadastre triciclos ou caminhões para operar as rotas.</p></div>`;
     return;
   }
-  container.innerHTML = scheduled.map(r => `<label class="route-point">
-    <input type="checkbox" class="route-checkbox" value="${escapeHTML(r.id)}">
-    <span><strong>${escapeHTML(r.id)} — ${escapeHTML(r.name)}</strong>
-    <small>${escapeHTML(r.type)}${r.customLocationName ? ` (${escapeHTML(r.customLocationName)})` : ''} — Qtd: ${escapeHTML(r.quantity || '')} ${escapeHTML(r.unit || '')}</small></span>
-  </label>`).join("");
 
-  document.querySelectorAll(".route-checkbox").forEach(c => c.addEventListener("change", updateRoutePreview));
-  updateRoutePreview();
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr><th>Identificador</th><th>Nome / Modelo</th><th>Placa</th><th>Capacidade Máx.</th><th>Volume Mín. para Saída</th><th>Ação</th></tr>
+      </thead>
+      <tbody>
+        ${vehicles.map(v => `
+          <tr>
+            <td><strong>${escapeHTML(v.id)}</strong></td>
+            <td>${escapeHTML(v.name)}</td>
+            <td>${escapeHTML(v.plate)}</td>
+            <td><strong>${escapeHTML(v.capacityKg)} Kg</strong></td>
+            <td>${escapeHTML(v.minVolumeKg)} Kg</td>
+            <td><button class="secondary-btn" onclick="deleteVehicle('${v.id}')">Excluir</button></td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
 }
 
-function updateRoutePreview() {
-  const ids = [...document.querySelectorAll(".route-checkbox:checked")].map(c => c.value);
-  const selected = ids.map(id => requests.find(r => r.id === id)).filter(Boolean);
-  document.getElementById("routeSummary").textContent = selected.length
-    ? `${selected.length} ponto(s) selecionado(s) para compor a rota.`
-    : "Nenhum ponto selecionado.";
-  document.getElementById("routeOrder").innerHTML = selected.map((r, i) =>
-    `<li>${i + 1}. ${escapeHTML(r.name)} (${escapeHTML(r.type)}) — ${escapeHTML(r.materials)}</li>`).join("");
+function deleteVehicle(id) {
+  vehicles = vehicles.filter(v => v.id !== id);
+  saveVehicles();
+  renderVehicles();
+  toast("Veículo removido com sucesso.");
+}
+
+// ROTEIRIZAÇÃO INTELIGENTE POR VEÍCULO
+function renderRoutes() {
+  const container = document.getElementById("routesByVehicleContainer");
+  if (!container) return;
+
+  const today = new Date();
+  const weekdays = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+  const currentDayName = weekdays[today.getDay()];
+  const formattedTodayDate = today.toLocaleDateString('pt-BR');
+
+  // Filtra as solicitações agendadas para o dia
+  const todayPoints = requests.filter(r => {
+    if (r.status !== "AGENDADA") return false;
+    if (!r.frequency) return false;
+    if (r.frequency.includes("Única") && r.frequency.includes(formattedTodayDate)) return true;
+    if (r.frequency.includes("Diária")) return true;
+    if (r.frequency.includes(currentDayName)) return true;
+    return false;
+  });
+
+  if (!todayPoints.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <h2>Nenhuma Coleta Programada para Hoje (${currentDayName})</h2>
+        <p>Não há coletas ativas registradas para o dia de hoje.</p>
+      </div>`;
+    return;
+  }
+
+  // Ordena os veículos: os que exigem maior volume mínimo primeiro (ex: Caminhão antes do Triciclo)
+  const sortedVehicles = [...vehicles].sort((a, b) => b.minVolumeKg - a.minVolumeKg);
+
+  let unassignedPoints = [...todayPoints];
+  let routeOutputHTML = "";
+
+  sortedVehicles.forEach(vehicle => {
+    let vehicleCapacityLeft = parseFloat(vehicle.capacityKg);
+    let vehiclePoints = [];
+
+    unassignedPoints = unassignedPoints.filter(point => {
+      const pointWeight = parseFloat(point.quantity) || 0;
+
+      if (pointWeight >= parseFloat(vehicle.minVolumeKg) && pointWeight <= vehicleCapacityLeft) {
+        vehiclePoints.push(point);
+        vehicleCapacityLeft -= pointWeight;
+        return false;
+      }
+      return true;
+    });
+
+    const totalAssignedWeight = vehiclePoints.reduce((acc, p) => acc + (parseFloat(p.quantity) || 0), 0);
+
+    routeOutputHTML += `
+      <div class="panel" style="margin-bottom: 20px;">
+        <div class="panel-heading">
+          <div>
+            <h2>🚚 ${escapeHTML(vehicle.name)} (${escapeHTML(vehicle.plate)})</h2>
+            <p>Capacidade Máx: <strong>${vehicle.capacityKg} Kg</strong> | Carga Alocada: <strong>${totalAssignedWeight} Kg</strong></p>
+          </div>
+        </div>
+        ${vehiclePoints.length ? `
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Ordem</th><th>Código</th><th>Solicitante</th><th>Local</th><th>Carga</th></tr></thead>
+              <tbody>
+                ${vehiclePoints.map((p, index) => `
+                  <tr>
+                    <td><strong>${index + 1}º Ponto</strong></td>
+                    <td>${escapeHTML(p.id)}</td>
+                    <td>${escapeHTML(p.name)}</td>
+                    <td>${escapeHTML(p.type)} ${p.customLocationName ? `(${escapeHTML(p.customLocationName)})` : ''}</td>
+                    <td><strong>${escapeHTML(p.quantity)} ${escapeHTML(p.unit)}</strong></td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        ` : `<p style="color:var(--muted);">Nenhum ponto atende aos critérios deste veículo hoje.</p>`}
+      </div>
+    `;
+  });
+
+  if (unassignedPoints.length) {
+    routeOutputHTML += `
+      <div class="panel" style="border-color: var(--orange);">
+        <h2 style="color: var(--orange);">⚠️ Coletas Pendentes / Excedentes</h2>
+        <p>Estes pontos não foram alocados devido à capacidade máxima ou exigência de volume:</p>
+        <ul style="margin-top:10px;">
+          ${unassignedPoints.map(p => `<li><strong>${p.name}</strong> - ${p.quantity} ${p.unit} (${p.frequency})</li>`).join("")}
+        </ul>
+      </div>
+    `;
+  }
+
+  container.innerHTML = routeOutputHTML;
 }
 
 function renderClients() {
@@ -622,7 +734,7 @@ function renderClients() {
         <h3>${escapeHTML(r.name)}</h3>
         <p>Telefone: ${escapeHTML(r.phone)}</p>
         <p>Tipo: ${escapeHTML(r.type)}${r.customLocationName ? ` - ${escapeHTML(r.customLocationName)}` : ''}</p>
-        <p>Origem: ${escapeHTML(r.source || 'Não informada')}</p>
+        <p>Frequência: ${escapeHTML(r.frequency || 'Não informada')}</p>
       </article>`).join("")
     : `<div class="empty-state"><h2>Nenhum cliente cadastrado</h2></div>`;
 }
@@ -634,7 +746,7 @@ function formatPhone(value) {
   return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
 }
 
-// Global Event Listeners
+// INICIALIZAÇÃO DE EVENTOS DO SISTEMA
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".nav-item").forEach(btn => {
     btn.addEventListener("click", () => showSection(btn.dataset.section));
@@ -659,111 +771,38 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("searchInput")?.addEventListener("input", renderRequests);
   document.getElementById("statusFilter")?.addEventListener("change", renderRequests);
 
-  document.getElementById("createRouteBtn")?.addEventListener("click", () => {
-    const ids = [...document.querySelectorAll(".route-checkbox:checked")].map(c => c.value);
-    if (!ids.length) {
-      toast("Selecione ao menos um ponto para gerar a rota.");
-      return;
-    }
-    ids.forEach(id => {
-      const r = requests.find(x => x.id === id);
-      if (r) r.status = "EM ROTA";
-    });
-    save();
-    renderRoutes();
-    renderDashboard();
-    toast("Rota gerada e pontos atualizados para 'EM ROTA'.");
+  // Modal Veículos Eventos
+  document.getElementById("novoVeiculoBtn")?.addEventListener("click", () => {
+    document.getElementById("vehicleModal")?.classList.remove("hidden");
+  });
+
+  document.getElementById("closeVehicleModal")?.addEventListener("click", () => {
+    document.getElementById("vehicleModal")?.classList.add("hidden");
+  });
+
+  document.getElementById("vehicleForm")?.addEventListener("submit", e => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+    const newVehicle = {
+      id: `VEH-${vehicles.length + 1}`,
+      name: data.name,
+      plate: data.plate,
+      capacityKg: parseFloat(data.capacityKg),
+      minVolumeKg: parseFloat(data.minVolumeKg)
+    };
+
+    vehicles.push(newVehicle);
+    saveVehicles();
+    renderVehicles();
+    
+    e.target.reset();
+    document.getElementById("vehicleModal")?.classList.add("hidden");
+    toast("Veículo cadastrado com sucesso.");
   });
 
   if (!checkPublicURL()) {
     renderDashboard();
   }
 });
-
-// CONFIGURAÇÃO DA FROTA DE VEÍCULOS
-const FLEET = [
-  { id: "V1", name: "Caminhão Baú (Pequeno)", capacityKg: 1500, plate: "TR-2026-A" },
-  { id: "V2", name: "Triciclo / Reboque Coleta", capacityKg: 400, plate: "TR-2026-B" }
-];
-
-// Nomes dos dias em português
-const WEEKDAYS = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
-
-// 🤖 FUNÇÃO DE AUTOMAÇÃO DE ROTAS
-function generateAutomaticRoutes() {
-  const today = new Date();
-  const currentDayName = WEEKDAYS[today.getDay()];
-  const formattedTodayDate = today.toLocaleDateString('pt-BR');
-
-  // Filtra as solicitações elegíveis para a data/dia atual
-  const activeRequests = requests.filter(r => r.status === "AGENDADA" || r.status === "NOVA");
-
-  const todayPoints = activeRequests.filter(r => {
-    if (!r.frequency) return false;
-    // Checa se é para a data exata (Única) ou se o dia da semana bate com o cadastrado
-    if (r.frequency.includes("Única") && r.frequency.includes(formattedTodayDate)) return true;
-    if (r.frequency.includes("Diária")) return true;
-    if (r.frequency.includes(currentDayName)) return true;
-    return false;
-  });
-
-  // Calcula peso total em Kg
-  const totalWeight = todayPoints.reduce((acc, item) => acc + (parseFloat(item.quantity) || 0), 0);
-
-  // Seleciona o veículo ideal com base na capacidade
-  const assignedVehicle = FLEET.find(v => v.capacityKg >= totalWeight) || FLEET[0];
-
-  return {
-    todayDate: formattedTodayDate,
-    todayDayName: currentDayName,
-    points: todayPoints,
-    totalWeight: totalWeight,
-    vehicle: assignedVehicle
-  };
-}
-
-// RENDERIZAÇÃO AUTOMÁTICA NA TELA DE ROTAS
-function renderRoutes() {
-  const routeData = generateAutomaticRoutes();
-  const container = document.getElementById("routePoints");
-  const summaryContainer = document.getElementById("routeSummary");
-  const orderContainer = document.getElementById("routeOrder");
-
-  if (!container) return;
-
-  if (!routeData.points.length) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <h2>Nenhuma Rota Programada para Hoje (${routeData.todayDayName})</h2>
-        <p>Não há coletas recorrentes ou pontuais agendadas para o dia de hoje.</p>
-      </div>`;
-    summaryContainer.textContent = "Sem operações agendadas.";
-    orderContainer.innerHTML = "";
-    return;
-  }
-
-  // Lista os pontos programados no painel
-  container.innerHTML = `
-    <div class="auto-route-card">
-      <div class="vehicle-badge">
-        🚚 <strong>Veículo Designado:</strong> ${routeData.vehicle.name} (${routeData.vehicle.plate})
-      </div>
-      <p style="margin-top:8px;"><strong>Carga Prevista:</strong> ${routeData.totalWeight} Kg / Máx: ${routeData.vehicle.capacityKg} Kg</p>
-    </div>
-    <br>
-    ${routeData.points.map(r => `
-      <div class="route-point">
-        <span>
-          <strong>${escapeHTML(r.id)} — ${escapeHTML(r.name)}</strong>
-          <small>${escapeHTML(r.type)} | ${escapeHTML(r.materials)} — <strong>${escapeHTML(r.quantity)} ${escapeHTML(r.unit)}</strong></small>
-        </span>
-      </div>
-    `).join("")}
-  `;
-
-  summaryContainer.textContent = `${routeData.points.length} coleta(s) agendada(s) para hoje (${routeData.todayDayName}).`;
-  
-  orderContainer.innerHTML = routeData.points.map((r, i) =>
-    `<li><strong>Ponto ${i + 1}:</strong> ${escapeHTML(r.name)} (${escapeHTML(r.type)}) — ${escapeHTML(r.frequency)}</li>`
-  ).join("");
-}
