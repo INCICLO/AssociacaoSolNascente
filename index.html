@@ -15,16 +15,27 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="brand-logo">
-      <div class="brand-title-wrap">
-        <strong>Sistema de Coletas de Resíduos</strong>
-        <span>Centro de Triagem Trairi</span>
-      </div>
+ <header class="topbar">
+  <div class="brand">
+    <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="brand-logo">
+    <div class="brand-title-wrap">
+      <strong>Sistema de Coletas de Resíduos</strong>
+      <span>Centro de Triagem Trairi</span>
     </div>
-    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
-  </header>
+  </div>
+
+  <!-- Toggle no topo do painel -->
+  <div class="theme-toggle-wrap">
+    <span>Dia</span>
+    <label class="switch">
+      <input type="checkbox" class="theme-toggle-checkbox">
+      <span class="slider"></span>
+    </label>
+    <span>Noite</span>
+  </div>
+
+  <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
+</header>
 
   <div class="layout">
     <aside class="sidebar" id="sidebar">
