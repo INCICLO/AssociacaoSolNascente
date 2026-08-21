@@ -35,6 +35,7 @@
         <button class="nav-item" data-section="coletas"><span>Coletas</span></button>
         <button class="nav-item" data-section="rotas"><span>Rotas</span></button>
         <button class="nav-item" data-section="clientes"><span>Clientes</span></button>
+        <button class="nav-item" data-section="veiculos"><span>Veículos</span></button>
       </nav>
     </aside>
 
@@ -151,36 +152,52 @@
         </div>
       </section>
 
-      <!-- ROTAS SECTION -->
-     <!-- ROTAS SECTION AUTOMATIZADA -->
-<section id="rotas" class="section">
+      <!-- VEÍCULOS SECTION -->
+<section id="veiculos" class="section">
   <div class="page-title">
     <div>
-      <p class="eyebrow">LOGÍSTICA INTELIGENTE</p>
-      <h1>Rotas & Frota do Dia</h1>
-      <p>Gerenciamento automático de itinerários e alocação de veículos.</p>
+      <p class="eyebrow">FROTA</p>
+      <h1>Cadastro de Veículos</h1>
+      <p>Gerencie os veículos da associação e defina as capacidades de carga.</p>
     </div>
-    <button class="primary-btn" id="dispatchRouteBtn">🚀 Despachar Rota de Hoje</button>
+    <button class="primary-btn" id="novoVeiculoBtn">+ Novo Veículo</button>
   </div>
 
-  <div class="route-layout">
-    <div class="panel">
-      <div class="panel-heading">
-        <div>
-          <h2>Itinerário Automatizado de Hoje</h2>
-          <p>Organizado automaticamente com base nas preferências do cliente.</p>
-        </div>
-      </div>
-      <div id="routePoints"></div>
-    </div>
-    
-    <div class="panel route-summary">
-      <h2>Resumo da Operação</h2>
-      <p id="routeSummary">Calculando rotas...</p>
-      <ol id="routeOrder" style="padding-left: 18px; margin-top: 14px;"></ol>
-    </div>
+  <div class="panel">
+    <div id="vehiclesList" class="table-wrap"></div>
   </div>
 </section>
+
+<!-- VEÍCULOS SECTION -->
+      <section id="veiculos" class="section">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">FROTA</p>
+            <h1>Cadastro de Veículos</h1>
+            <p>Gerencie os veículos da associação e defina as capacidades de carga.</p>
+          </div>
+          <button class="primary-btn" id="novoVeiculoBtn">+ Novo Veículo</button>
+        </div>
+
+        <div class="panel">
+          <div id="vehiclesList" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <!-- ROTAS SECTION AUTOMATIZADA -->
+      <section id="rotas" class="section">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">LOGÍSTICA INTELIGENTE</p>
+            <h1>Rotas & Frota do Dia</h1>
+            <p>Gerenciamento automático de itinerários e alocação de veículos por capacidade.</p>
+          </div>
+          <button class="primary-btn" id="dispatchRouteBtn">🚀 Despachar Rota de Hoje</button>
+        </div>
+
+        <!-- Container dinâmico onde as rotas separadas por veículo serão renderizadas -->
+        <div id="routesByVehicleContainer"></div>
+      </section>
 
       <!-- CLIENTES SECTION -->
       <section id="clientes" class="section">
@@ -213,3 +230,30 @@
   <script src="app.js"></script>
 </body>
 </html>
+
+<!-- MODAL DE CADASTRO DE VEÍCULO -->
+<div class="modal hidden" id="vehicleModal">
+  <div class="modal-card">
+    <button class="close-btn" id="closeVehicleModal" aria-label="Fechar">✕</button>
+    <p class="eyebrow">FROTA</p>
+    <h2>Cadastrar Novo Veículo</h2>
+    <form id="vehicleForm" class="simplified-form">
+      <div class="form-group-block">
+        <label class="form-label">Nome/Modelo do Veículo *
+          <input name="name" required placeholder="Ex: Caminhão Baú ou Triciclo" class="big-input">
+        </label>
+        <label class="form-label">Placa / Identificador *
+          <input name="plate" required placeholder="Ex: TR-01" class="big-input">
+        </label>
+        <label class="form-label">Capacidade Máxima (Kg) *
+          <input name="capacityKg" type="number" required placeholder="Ex: 1500" class="big-input">
+        </label>
+        <label class="form-label">Volume Mínimo para Saída (Kg) *
+          <small style="color:var(--muted);font-weight:400;">Ex: O caminhão só roda se o ponto tiver acima de 200Kg.</small>
+          <input name="minVolumeKg" type="number" required placeholder="Ex: 200" class="big-input">
+        </label>
+      </div>
+      <button class="primary-btn submit-btn" type="submit">SALVAR VEÍCULO</button>
+    </form>
+  </div>
+</div>
