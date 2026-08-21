@@ -529,10 +529,10 @@ body.public-mode .content {
 }
 
 /* ==========================================================================
-   MODO ESCURO (DARK MODE) & TOGGLE SWITCH COM ÍCONES
+   MODO ESCURO (DARK MODE) - CORRIGIDO
    ========================================================================== */
 
-/* Variáveis do Modo Escuro */
+/* Variáveis para o Modo Escuro */
 body.dark-mode {
   --background: #121624;
   --white: #1a2035;
@@ -543,6 +543,42 @@ body.dark-mode {
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
+/* 1. MANTÉM A BARRA SUPERIOR (TOPBAR) E A BARRA LATERAL (SIDEBAR) ESCURAS */
+body.dark-mode .topbar {
+  background-color: #1a2035 !important;
+  border-bottom-color: #2d3748 !important;
+}
+
+body.dark-mode .brand strong {
+  color: #ffffff !important;
+}
+
+body.dark-mode .brand span {
+  color: #a0aec0 !important;
+}
+
+body.dark-mode .sidebar {
+  background-color: #0f1322 !important; /* Preserva o fundo escuro da barra lateral */
+}
+
+body.dark-mode .nav-item {
+  color: rgba(255, 255, 255, 0.85) !important; /* Preserva o texto visível e claro no menu */
+}
+
+body.dark-mode .nav-item:hover, 
+body.dark-mode .nav-item.active {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+/* 2. PRESERVA A LOGO DA ASSOCIAÇÃO NO TOPO (SEM CAIXA BRANCA INDESEJADA) */
+body.dark-mode .brand-logo {
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* 3. MANUTENÇÃO DOS CARDS E PAINÉIS ESCUROS */
 body.dark-mode .stat-card,
 body.dark-mode .panel,
 body.dark-mode .client-card,
@@ -558,7 +594,7 @@ body.dark-mode .material-checkbox {
   border-color: #2d3748 !important;
 }
 
-/* Mantém o cabeçalho das logos sempre branco */
+/* 4. MANTÉM APENAS O CABEÇALHO DO FORMULÁRIO PÚBLICO EM BRANCO (CONFORME MANUAL) */
 body.dark-mode .public-header {
   background-color: #ffffff !important;
   border-color: #d2d8e0 !important;
@@ -573,7 +609,7 @@ body.dark-mode .public-header .public-sub {
   color: #5e6875 !important;
 }
 
-/* ESTILIZAÇÃO DO TOGGLE SWITCH */
+/* 5. ESTILIZAÇÃO E AJUSTE DO TOGGLE SWITCH */
 .theme-toggle-wrap {
   display: flex;
   align-items: center;
@@ -649,31 +685,4 @@ input:checked + .slider {
 
 input:checked + .slider:before {
   transform: translateX(22px);
-}
-
-@media (max-width: 1000px) {
-  .cards { grid-template-columns: repeat(2, 1fr); }
-  .route-layout { grid-template-columns: 1fr; }
-  .client-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 720px) {
-  .topbar { padding: 10px 16px; height: 80px; }
-  .partner-logos-container { gap: 16px; flex-wrap: wrap; }
-  .partner-logo { height: 42px; }
-  .menu-toggle { display: block; }
-  .sidebar {
-    position: fixed; left: -255px; top: 80px; bottom: 0; z-index: 30;
-    transition: left .2s ease;
-  }
-  .sidebar.open { left: 0; }
-  .content { padding: 20px 14px; }
-  .page-title { align-items: flex-start; flex-direction: column; }
-  .cards { grid-template-columns: 1fr 1fr; gap: 10px; }
-  .stat-card { padding: 16px; }
-  .stat-card strong { font-size: 24px; }
-  .filters { grid-template-columns: 1fr; }
-  .row-group { flex-direction: column; }
-  .materials-grid { grid-template-columns: 1fr 1fr; }
-  .client-grid { grid-template-columns: 1fr; }
 }
