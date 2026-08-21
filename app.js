@@ -3,7 +3,7 @@ const STORAGE_KEY = "sol_nascente_solicitacoes_v1";
 const defaultRequests = [
   {
     id: "SOL-2026-000001",
-    name: "Exemplo de solicitante",
+    name: "Exemplo de Solicitante",
     phone: "(88) 99999-9999",
     type: "Residência",
     customLocationName: "",
@@ -12,7 +12,7 @@ const defaultRequests = [
     materials: "Papel, Papelão",
     quantity: "50",
     unit: "Kg",
-    source: "Instagram / Facebook",
+    source: "Redes Sociais (Instagram / Facebook)",
     notes: "Coleta no galpão lateral",
     status: "NOVA",
     createdAt: new Date().toISOString()
@@ -82,71 +82,75 @@ function showSection(sectionId) {
 function buildFormHTML(formId) {
   return `
     <form id="${formId}" class="simplified-form">
-      <!-- 1. IDENTIFICAÇÃO -->
+      <!-- 1. DADOS DE IDENTIFICAÇÃO -->
       <div class="form-group-block">
-        <label class="form-label">Seu Nome Completo *
-          <input name="name" required maxlength="100" placeholder="Digite seu nome..." class="big-input">
+        <span class="form-block-title">1. Dados do Solicitante</span>
+        <label class="form-label">Nome Completo *
+          <input name="name" required maxlength="100" placeholder="Digite seu nome completo" class="big-input">
         </label>
         
-        <label class="form-label">Seu Telefone (WhatsApp) *
+        <label class="form-label">Telefone de Contato (WhatsApp) *
           <input name="phone" required inputmode="numeric" maxlength="15" placeholder="(88) 99999-9999" class="big-input phone-mask">
         </label>
       </div>
 
-      <!-- 2. TIPO DE LOCAL -->
+      <!-- 2. TIPO DE LOCALIDADE -->
       <div class="form-group-block">
-        <label class="form-label">Onde será realizada a coleta? *
+        <span class="form-block-title">2. Tipo de Localidade</span>
+        <label class="form-label">Selecione o tipo de local para a coleta *
           <select name="type" required class="big-select type-select">
-            <option value="Residência">🏠 Residência (Minha Casa)</option>
-            <option value="Estabelecimento">🏢 Estabelecimento Comercial / Empresa</option>
-            <option value="Evento">🎉 Evento</option>
-            <option value="Condomínio">🏢 Condomínio</option>
-            <option value="Outro">📍 Outro</option>
+            <option value="Residência">Residência</option>
+            <option value="Estabelecimento">Estabelecimento Comercial / Empresa</option>
+            <option value="Evento">Evento Público ou Privado</option>
+            <option value="Condomínio">Condomínio Residencial / Comercial</option>
+            <option value="Outro">Outro</option>
           </select>
         </label>
 
         <div class="custom-location-wrap hidden">
           <label class="form-label">Nome do Estabelecimento / Local / Evento *
-            <input name="customLocationName" placeholder="Ex: Mercadinho Sol, Festival de Verão..." class="big-input">
+            <input name="customLocationName" placeholder="Informe o nome da empresa ou local" class="big-input">
           </label>
         </div>
       </div>
 
-      <!-- 3. MAPA / LOCALIZAÇÃO -->
+      <!-- 3. LOCALIZAÇÃO NO MAPA -->
       <div class="form-group-block">
-        <label class="form-label">Clique no mapa exatamente onde o lixo está localizado: *</label>
-        <p class="map-instruction">👇 Toque ou clique no mapa para marcar a localização exata para a coleta!</p>
+        <span class="form-block-title">3. Localização Exata</span>
+        <label class="form-label">Selecione o ponto exato no mapa abaixo *</label>
+        <p class="map-instruction">Clique ou toque no mapa para definir a posição onde os resíduos estarão disponíveis.</p>
         
-        <button type="button" class="geo-btn">📍 Usar minha localização atual</button>
+        <button type="button" class="geo-btn">Usar minha localização atual</button>
 
         <div class="map-container" id="map-${formId}"></div>
 
         <div class="coords-display">
-          <span>📍 Coordenadas selecionadas:</span>
-          <strong class="coords-text">Nenhum ponto marcado no mapa ainda</strong>
+          <span>Coordenadas Geográficas:</span>
+          <strong class="coords-text">Nenhum ponto marcado no mapa</strong>
           <input type="hidden" name="latitude" required>
           <input type="hidden" name="longitude" required>
         </div>
       </div>
 
-      <!-- 4. MATERIAIS PARA COLETA -->
+      <!-- 4. RESÍDUOS / MATERIAIS -->
       <div class="form-group-block">
-        <label class="form-label">Quais tipos de resíduos você irá disponibilizar? *</label>
+        <span class="form-block-title">4. Resíduos para Coleta</span>
+        <label class="form-label">Selecione os tipos de materiais recicláveis disponíveis *</label>
         <div class="materials-grid">
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Papel"> 📄 Papel</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Papelão"> 📦 Papelão</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Vidro"> 🍾 Vidro</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Metal"> 🥫 Metal / Latas</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Plástico"> 🥤 Plástico / Garrafas PET</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Eletrônicos"> 📺 Eletrônicos</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Outros"> 🌀 Outros</label>
+          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Papel"> Papel</label>
+          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Papelão"> Papelão</label>
+          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Vidro"> Vidro</label>
+          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Metal"> Metal / Latas</label>
+          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Plástico"> Plástico / PET</label>
+          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Eletrônicos"> Eletrônicos</label>
+          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Outros"> Outros</label>
         </div>
       </div>
 
       <!-- 5. QUANTIDADE ESTIMADA -->
       <div class="form-group-block row-group">
         <label class="form-label flex-1">Quantidade Estimada *
-          <input name="quantity" type="number" step="0.1" min="1" required placeholder="Ex: 10, 50, 100" class="big-input">
+          <input name="quantity" type="number" step="0.1" min="1" required placeholder="Ex: 50" class="big-input">
         </label>
 
         <label class="form-label flex-1">Unidade de Medida *
@@ -161,29 +165,31 @@ function buildFormHTML(formId) {
         </label>
       </div>
 
-      <!-- 6. COMO CONHECEU A ASSOCIAÇÃO -->
+      <!-- 6. CANAL DE CONHECIMENTO -->
       <div class="form-group-block">
-        <label class="form-label">Como você conheceu a Associação Sol Nascente? *
+        <span class="form-block-title">6. Origem da Informação</span>
+        <label class="form-label">Como tomou conhecimento da Associação Sol Nascente? *
           <select name="source" required class="big-select">
             <option value="">Selecione uma opção...</option>
-            <option value="Redes Sociais (Instagram / Facebook)">📱 Redes Sociais (Instagram / Facebook)</option>
-            <option value="WhatsApp / Mensagem">💬 WhatsApp / Grupo de Mensagens</option>
-            <option value="Indicação de Amigo / Vizinho">👥 Indicação de Amigo ou Vizinho</option>
-            <option value="Panfletos / Cartaz">📄 Panfletos / Cartaz</option>
-            <option value="Evento Local">🎉 Evento na Cidade</option>
-            <option value="Outro">⭐ Outro</option>
+            <option value="Redes Sociais (Instagram / Facebook)">Redes Sociais (Instagram / Facebook)</option>
+            <option value="WhatsApp / Mensagem">WhatsApp / Mensagem Instantânea</option>
+            <option value="Indicação de Amigo / Vizinho">Indicação de Amigo / Vizinho</option>
+            <option value="Panfletos / Cartaz">Divulgação Impressa / Cartaz</option>
+            <option value="Evento Local">Evento Institucional / Cidade</option>
+            <option value="Outro">Outro</option>
           </select>
         </label>
       </div>
 
       <!-- 7. OBSERVAÇÕES ADICIONAIS -->
       <div class="form-group-block">
-        <label class="form-label">Observações ou Ponto de Referência (Opcional)
-          <textarea name="notes" rows="3" placeholder="Ex: Lixo está na calçada ao lado do portão verde..." class="big-textarea"></textarea>
+        <span class="form-block-title">7. Observações e Referências</span>
+        <label class="form-label">Ponto de Referência ou Informações Adicionais (Opcional)
+          <textarea name="notes" rows="3" placeholder="Exemplo: Material armazenado ao lado da entrada secundária." class="big-textarea"></textarea>
         </label>
       </div>
 
-      <button class="primary-btn submit-btn" type="submit">✅ ENVIAR SOLICITAÇÃO DE COLETA</button>
+      <button class="primary-btn submit-btn" type="submit">SUBMETER SOLICITAÇÃO DE COLETA</button>
     </form>
   `;
 }
@@ -229,13 +235,13 @@ function initFormEvents(formId) {
     const lng = form.querySelector('input[name="longitude"]').value;
 
     if (!lat || !lng) {
-      toast("⚠️ Por favor, marque a sua localização no mapa clicando no ponto correto!");
+      toast("Por favor, selecione o ponto de localização exato no mapa.");
       return;
     }
 
     const checkedMaterials = [...form.querySelectorAll('input[name="materials_list"]:checked')].map(c => c.value);
     if (checkedMaterials.length === 0) {
-      toast("⚠️ Selecione pelo menos um tipo de resíduo para a coleta!");
+      toast("Selecione ao menos um tipo de material para agendar a coleta.");
       return;
     }
 
@@ -265,17 +271,16 @@ function initFormEvents(formId) {
     if (document.body.classList.contains('public-mode')) {
       form.innerHTML = `
         <div class="success-screen">
-          <div class="success-icon">🎉</div>
-          <h2>Solicitação Enviada com Sucesso!</h2>
-          <p>Sua solicitação foi registrada sob o código: <strong>${request.id}</strong></p>
-          <p>A equipe da <strong>Associação Sol Nascente</strong> entrará em contato em breve para confirmar a coleta.</p>
-          <button class="primary-btn" type="button" onclick="window.location.reload()">Fazer Outra Solicitação</button>
+          <h2>Solicitação Registrada com Sucesso</h2>
+          <p>O seu pedido foi protocolado sob o número de identificação: <strong>${request.id}</strong></p>
+          <p>A equipe da <strong>Associação Sol Nascente</strong> em parceria com a <strong>Inciclo</strong> e <strong>Recicle+ Trairi</strong> analisará a solicitação e entrará em contato para confirmação.</p>
+          <button class="primary-btn" type="button" onclick="window.location.reload()">Registrar Nova Solicitação</button>
         </div>
       `;
     } else {
       closeModal();
       renderDashboard();
-      toast(`✅ Solicitação ${request.id} criada com sucesso!`);
+      toast(`Solicitação ${request.id} registrada com sucesso.`);
     }
   });
 }
@@ -289,7 +294,7 @@ function initMap(formId) {
 
   setTimeout(() => {
     if (typeof L === 'undefined') {
-      console.error("Leaflet.js não foi carregado corretamente!");
+      console.error("A biblioteca Leaflet.js não foi carregada.");
       return;
     }
 
@@ -300,7 +305,6 @@ function initMap(formId) {
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Garante que o mapa recalcule tamanho e aceite cliques
     map.invalidateSize();
 
     let marker = null;
@@ -313,11 +317,11 @@ function initMap(formId) {
     function setLocation(lat, lng) {
       if (marker) map.removeLayer(marker);
       marker = L.marker([lat, lng]).addTo(map);
-      marker.bindPopup("📍 Ponto de Coleta Selecionado").openPopup();
+      marker.bindPopup("Ponto de Coleta Selecionado").openPopup();
       
       latInput.value = lat.toFixed(6);
       lngInput.value = lng.toFixed(6);
-      coordsText.textContent = `Lat: ${lat.toFixed(5)}, Long: ${lng.toFixed(5)}`;
+      coordsText.textContent = `Latitude: ${lat.toFixed(5)} | Longitude: ${lng.toFixed(5)}`;
     }
 
     map.on('click', e => {
@@ -328,22 +332,22 @@ function initMap(formId) {
     if (geoBtn) {
       geoBtn.addEventListener('click', () => {
         if (!navigator.geolocation) {
-          toast("Navegador não suporta geolocalização.");
+          toast("A geolocalização não é suportada por este navegador.");
           return;
         }
-        geoBtn.textContent = "⌛ Obtendo localização...";
+        geoBtn.textContent = "Obtendo coordenadas...";
         navigator.geolocation.getCurrentPosition(
           pos => {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
             map.setView([lat, lng], 17);
             setLocation(lat, lng);
-            geoBtn.textContent = "📍 Localização Atualizada!";
-            setTimeout(() => { geoBtn.textContent = "📍 Usar minha localização atual"; }, 3000);
+            geoBtn.textContent = "Localização Atualizada";
+            setTimeout(() => { geoBtn.textContent = "Usar minha localização atual"; }, 3000);
           },
           err => {
-            toast("Não foi possível obter sua localização automaticamente. Por favor, toque no mapa.");
-            geoBtn.textContent = "📍 Usar minha localização atual";
+            toast("Não foi possível obter a localização exata automaticamente. Por favor, marque manualmente no mapa.");
+            geoBtn.textContent = "Usar minha localização atual";
           },
           { enableHighAccuracy: true }
         );
@@ -368,12 +372,12 @@ function copyPublicLink() {
   const publicURL = `${window.location.origin}${window.location.pathname}?form=public`;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(publicURL).then(() => {
-      toast("📋 Link do formulário público copiado para a área de transferência!");
+      toast("Link do formulário público copiado.");
     }).catch(() => {
-      prompt("Copie o link público do formulário abaixo:", publicURL);
+      prompt("Copie o link do formulário público:", publicURL);
     });
   } else {
-    prompt("Copie o link público do formulário abaixo:", publicURL);
+    prompt("Copie o link do formulário público:", publicURL);
   }
 }
 
@@ -400,21 +404,21 @@ function renderDashboard() {
 }
 
 function tableHTML(data, withActions = true) {
-  if (!data.length) return `<div class="empty-state"><h2>Nenhuma solicitação encontrada</h2><p>Cadastre uma nova solicitação para começar.</p></div>`;
+  if (!data.length) return `<div class="empty-state"><h2>Nenhuma solicitação encontrada</h2><p>Não há registros gravados no sistema.</p></div>`;
   return `<table>
     <thead><tr>
-      <th>Código</th><th>Solicitante</th><th>Local</th><th>Materiais / Qtd</th><th>Origem</th><th>Status</th>${withActions ? "<th>Ação</th>" : ""}
+      <th>Código</th><th>Solicitante</th><th>Local</th><th>Materiais / Quantidade</th><th>Origem</th><th>Status</th>${withActions ? "<th>Ação</th>" : ""}
     </tr></thead>
     <tbody>
       ${data.map(r => `<tr>
         <td><strong>${escapeHTML(r.id)}</strong></td>
-        <td>${escapeHTML(r.name)}<br><small>📱 ${escapeHTML(r.phone)}</small></td>
+        <td>${escapeHTML(r.name)}<br><small>Tel: ${escapeHTML(r.phone)}</small></td>
         <td>
           <strong>${escapeHTML(r.type)}${r.customLocationName ? ` (${escapeHTML(r.customLocationName)})` : ''}</strong><br>
-          <small>📍 ${r.latitude && r.longitude ? `<a href="https://maps.google.com/?q=${r.latitude},${r.longitude}" target="_blank" style="color:var(--orange);font-weight:bold;text-decoration:underline;">Ver no Google Maps</a>` : 'Sem mapa'}</small>
+          <small>${r.latitude && r.longitude ? `<a href="https://maps.google.com/?q=${r.latitude},${r.longitude}" target="_blank" style="color:var(--orange);font-weight:bold;text-decoration:none;">Visualizar no Mapa</a>` : 'Sem coordenadas'}</small>
         </td>
-        <td>${escapeHTML(r.materials)}<br><small><strong>Qtd:</strong> ${escapeHTML(r.quantity || '-')} ${escapeHTML(r.unit || '')}</small></td>
-        <td><small>${escapeHTML(r.source || 'Não inf.')}</small></td>
+        <td>${escapeHTML(r.materials)}<br><small><strong>Total:</strong> ${escapeHTML(r.quantity || '-')} ${escapeHTML(r.unit || '')}</small></td>
+        <td><small>${escapeHTML(r.source || 'Não informada')}</small></td>
         <td>${statusBadge(r.status)}</td>
         ${withActions ? `<td><select class="inline-status" data-id="${escapeHTML(r.id)}">
           ${["NOVA","EM ANÁLISE","AGENDADA","EM ROTA","COLETADA","FINALIZADA"].map(s => `<option ${s===r.status ? "selected":""}>${s}</option>`).join("")}
@@ -451,7 +455,7 @@ function renderRoutes() {
   const scheduled = requests.filter(r => r.status === "AGENDADA");
   const container = document.getElementById("routePoints");
   if (!scheduled.length) {
-    container.innerHTML = `<div class="empty-state"><h2>Nenhum ponto disponível</h2><p>Altere uma solicitação para "AGENDADA" para incluí-la na rota.</p></div>`;
+    container.innerHTML = `<div class="empty-state"><h2>Nenhum ponto disponível</h2><p>Altere o status de uma solicitação para "AGENDADA" para incluí-la na rota.</p></div>`;
     document.getElementById("routeSummary").textContent = "Nenhum ponto selecionado.";
     document.getElementById("routeOrder").innerHTML = "";
     return;
@@ -470,7 +474,7 @@ function updateRoutePreview() {
   const ids = [...document.querySelectorAll(".route-checkbox:checked")].map(c => c.value);
   const selected = ids.map(id => requests.find(r => r.id === id)).filter(Boolean);
   document.getElementById("routeSummary").textContent = selected.length
-    ? `${selected.length} ponto(s) selecionado(s) para a rota.`
+    ? `${selected.length} ponto(s) selecionado(s) para compor a rota.`
     : "Nenhum ponto selecionado.";
   document.getElementById("routeOrder").innerHTML = selected.map((r, i) =>
     `<li>${i + 1}. ${escapeHTML(r.name)} (${escapeHTML(r.type)}) — ${escapeHTML(r.materials)}</li>`).join("");
@@ -489,10 +493,10 @@ function renderClients() {
   document.getElementById("clientsList").innerHTML = unique.length
     ? unique.map(r => `<article class="client-card">
         <h3>${escapeHTML(r.name)}</h3>
-        <p>📱 ${escapeHTML(r.phone)}</p>
-        <p>🏠 ${escapeHTML(r.type)}${r.customLocationName ? ` - ${escapeHTML(r.customLocationName)}` : ''}</p>
-        <p>⭐ Conheceu por: ${escapeHTML(r.source || 'Não informado')}</p>
-      </article>`).join("")
+        <p>Telefone: ${escapeHTML(r.phone)}</p>
+        <p>Tipo: ${escapeHTML(r.type)}${r.customLocationName ? ` - ${escapeHTML(r.customLocationName)}` : ''}</p>
+        <p>Origem: ${escapeHTML(r.source || 'Não informada')}</p>
+      </article>`)
     : `<div class="empty-state"><h2>Nenhum cliente cadastrado</h2></div>`;
 }
 
@@ -531,7 +535,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("createRouteBtn")?.addEventListener("click", () => {
     const ids = [...document.querySelectorAll(".route-checkbox:checked")].map(c => c.value);
     if (!ids.length) {
-      toast("Selecione pelo menos um ponto para criar a rota.");
+      toast("Selecione ao menos um ponto para gerar a rota.");
       return;
     }
     ids.forEach(id => {
@@ -541,7 +545,7 @@ document.addEventListener("DOMContentLoaded", () => {
     save();
     renderRoutes();
     renderDashboard();
-    toast("Rota criada e pontos marcados como 'EM ROTA'.");
+    toast("Rota gerada e pontos atualizados para 'EM ROTA'.");
   });
 
   if (!checkPublicURL()) {
