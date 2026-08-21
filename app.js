@@ -132,7 +132,7 @@ function buildFormHTML(formId) {
         </div>
       </div>
 
-      <!-- 4. RESÍDUOS / MATERIAIS -->
+   <!-- 4. RESÍDUOS / MATERIAIS -->
       <div class="form-group-block">
         <span class="form-block-title">4. Resíduos para Coleta</span>
         <label class="form-label">Selecione os tipos de materiais recicláveis disponíveis *</label>
@@ -143,7 +143,14 @@ function buildFormHTML(formId) {
           <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Metal"> Metal / Latas</label>
           <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Plástico"> Plástico / PET</label>
           <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Eletrônicos"> Eletrônicos</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Outros"> Outros</label>
+          <label class="material-checkbox"><input type="checkbox" name="materials_list" id="otherMaterialCheckbox" value="Outros"> Outros</label>
+        </div>
+
+        <!-- CAMPO ADICIONADO PARA ESPECIFICAR "OUTROS" -->
+        <div id="otherMaterialWrap" class="hidden" style="margin-top: 12px;">
+          <label class="form-label">Qual resíduo? Especificar: *
+            <input name="otherMaterialText" id="otherMaterialText" placeholder="Ex: Óleo de cozinha usado, Baterias..." class="big-input">
+          </label>
         </div>
       </div>
 
