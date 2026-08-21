@@ -658,3 +658,28 @@ body.public-mode .content {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* ESTILOS DE AUTOMAÇÃO DE FROTA E ROTAS */
+.auto-route-card {
+  background: var(--light-blue);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.vehicle-badge {
+  color: var(--navy);
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.route-summary ol li {
+  font-size: 13px;
+  color: var(--navy);
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
