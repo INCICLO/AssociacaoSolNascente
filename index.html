@@ -5,11 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Sistema de Gestão de Coletas - Associação Sol Nascente">
   <title>Sol Nascente | Gestão de Coletas</title>
+  
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Qanelas:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- Leaflet CSS para o Mapa Interativo -->
+  
+  <!-- Leaflet CSS for Map -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 </head>
 <body>
@@ -113,7 +115,7 @@
         </div>
       </section>
 
-      <!-- SEÇÃO DO FORMULÁRIO PÚBLICO COMPARTILHÁVEL -->
+      <!-- FORMULÁRIO PÚBLICO STANDALONE SECTION -->
       <section id="public-form-section" class="section">
         <div class="public-container">
           <div class="public-header">
@@ -123,17 +125,71 @@
             <p class="public-sub">Preencha o formulário simples abaixo para agendar a busca dos seus recicláveis!</p>
           </div>
           <div class="public-card" id="publicFormContainer">
-            <!-- Formulário é injetado aqui via JS -->
+            <!-- Form will be injected here for standalone mode -->
           </div>
         </div>
       </section>
 
-      <!-- ROTAS, COLETAS, CLIENTES -->
-      ...
+      <!-- COLETAS SECTION -->
+      <section id="coletas" class="section">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">OPERAÇÃO</p>
+            <h1>Coletas</h1>
+            <p>Visualização das coletas programadas e realizadas.</p>
+          </div>
+        </div>
+        <div class="empty-state">
+          <div class="empty-icon">♻</div>
+          <h2>Nenhuma coleta programada</h2>
+          <p>As solicitações agendadas aparecerão aqui.</p>
+        </div>
+      </section>
+
+      <!-- ROTAS SECTION -->
+      <section id="rotas" class="section">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">LOGÍSTICA</p>
+            <h1>Rotas</h1>
+            <p>Organize os pontos de coleta para os motoristas.</p>
+          </div>
+          <button class="primary-btn" id="createRouteBtn">+ Criar rota</button>
+        </div>
+
+        <div class="route-layout">
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Pontos disponíveis</h2>
+                <p>Selecione solicitações agendadas.</p>
+              </div>
+            </div>
+            <div id="routePoints"></div>
+          </div>
+          <div class="panel route-summary">
+            <h2>Resumo da rota</h2>
+            <p id="routeSummary">Nenhum ponto selecionado.</p>
+            <ol id="routeOrder"></ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- CLIENTES SECTION -->
+      <section id="clientes" class="section">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">CADASTRO</p>
+            <h1>Clientes</h1>
+            <p>Base de solicitantes cadastrados no sistema.</p>
+          </div>
+        </div>
+        <div id="clientsList" class="client-grid"></div>
+      </section>
     </main>
   </div>
 
-  <!-- MODAL DE SOLICITAÇÃO (PAINEL INTERNO) -->
+  <!-- MODAL DE SOLICITAÇÃO (INTERNO) -->
   <div class="modal hidden" id="requestModal">
     <div class="modal-card">
       <button class="close-btn" id="closeModal" aria-label="Fechar">×</button>
@@ -145,7 +201,7 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- Leaflet JS -->
+  <!-- Leaflet JS (carregado ANTES do app.js) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="app.js"></script>
 </body>
