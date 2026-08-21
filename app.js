@@ -132,7 +132,7 @@ function buildFormHTML(formId) {
         </div>
       </div>
 
-   <!-- 4. RESÍDUOS / MATERIAIS -->
+      <!-- 4. RESÍDUOS / MATERIAIS -->
       <div class="form-group-block">
         <span class="form-block-title">4. Resíduos para Coleta</span>
         <label class="form-label">Selecione os tipos de materiais recicláveis disponíveis *</label>
@@ -530,7 +530,7 @@ function renderClients() {
         <p>Telefone: ${escapeHTML(r.phone)}</p>
         <p>Tipo: ${escapeHTML(r.type)}${r.customLocationName ? ` - ${escapeHTML(r.customLocationName)}` : ''}</p>
         <p>Origem: ${escapeHTML(r.source || 'Não informada')}</p>
-      </article>`)
+      </article>`).join("")
     : `<div class="empty-state"><h2>Nenhum cliente cadastrado</h2></div>`;
 }
 
@@ -541,8 +541,36 @@ function formatPhone(value) {
   return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
 }
 
+// Gerenciamento de Tema (Modo Claro / Escuro)
+function initThemeToggle() {
+  const checkboxes = document.querySelectorAll('.theme-toggle-checkbox');
+  const savedTheme = localStorage.getItem('theme_preference');
+
+  if (savedTheme === 'dark') {
+    document.body.classList.add('dark-mode');
+    checkboxes.forEach(cb => cb.checked = true);
+  }
+
+  checkboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', e => {
+      const isDark = e.target.checked;
+      checkboxes.forEach(cb => cb.checked = isDark);
+
+      if (isDark) {
+        document.body.classList.add('dark-mode');
+        localStorage.setItem('theme_preference', 'dark');
+      } else {
+        document.body.classList.remove('dark-mode');
+        localStorage.setItem('theme_preference', 'light');
+      }
+    });
+  });
+}
+
 // Global Event Listeners
 document.addEventListener("DOMContentLoaded", () => {
+  initThemeToggle();
+
   document.querySelectorAll(".nav-item").forEach(btn => {
     btn.addEventListener("click", () => showSection(btn.dataset.section));
   });
@@ -585,39 +613,4 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!checkPublicURL()) {
     renderDashboard();
   }
-});
-
-// Gerenciamento de Tema (Modo Claro / Escuro)
-function initThemeToggle() {
-  const checkboxes = document.querySelectorAll('.theme-toggle-checkbox');
-  const savedTheme = localStorage.getItem('theme_preference');
-
-  // Aplica o tema salvo anteriormente
-  if (savedTheme === 'dark') {
-    document.body.classList.add('dark-mode');
-    checkboxes.forEach(cb => cb.checked = true);
-  }
-
-  checkboxes.forEach(checkbox => {
-    checkbox.addEventListener('change', e => {
-      const isDark = e.target.checked;
-      
-      // Sincroniza todos os switches na tela
-      checkboxes.forEach(cb => cb.checked = isDark);
-
-      if (isDark) {
-        document.body.classList.add('dark-mode');
-        localStorage.setItem('theme_preference', 'dark');
-      } else {
-        document.body.classList.remove('dark-mode');
-        localStorage.setItem('theme_preference', 'light');
-      }
-    });
-  });
-}
-
-// Chame a função quando a página carregar
-document.addEventListener('DOMContentLoaded', () => {
-  initThemeToggle();
-  // ... restotante dos seus event listeners ...
 });
