@@ -679,3 +679,91 @@ document.addEventListener("DOMContentLoaded", () => {
     renderDashboard();
   }
 });
+
+// CONFIGURAÇÃO DA FROTA DE VEÍCULOS
+const FLEET = [
+  { id: "V1", name: "Caminhão Baú (Pequeno)", capacityKg: 1500, plate: "TR-2026-A" },
+  { id: "V2", name: "Triciclo / Reboque Coleta", capacityKg: 400, plate: "TR-2026-B" }
+];
+
+// Nomes dos dias em português
+const WEEKDAYS = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+
+// 🤖 FUNÇÃO DE AUTOMAÇÃO DE ROTAS
+function generateAutomaticRoutes() {
+  const today = new Date();
+  const currentDayName = WEEKDAYS[today.getDay()];
+  const formattedTodayDate = today.toLocaleDateString('pt-BR');
+
+  // Filtra as solicitações elegíveis para a data/dia atual
+  const activeRequests = requests.filter(r => r.status === "AGENDADA" || r.status === "NOVA");
+
+  const todayPoints = activeRequests.filter(r => {
+    if (!r.frequency) return false;
+    // Checa se é para a data exata (Única) ou se o dia da semana bate com o cadastrado
+    if (r.frequency.includes("Única") && r.frequency.includes(formattedTodayDate)) return true;
+    if (r.frequency.includes("Diária")) return true;
+    if (r.frequency.includes(currentDayName)) return true;
+    return false;
+  });
+
+  // Calcula peso total em Kg
+  const totalWeight = todayPoints.reduce((acc, item) => acc + (parseFloat(item.quantity) || 0), 0);
+
+  // Seleciona o veículo ideal com base na capacidade
+  const assignedVehicle = FLEET.find(v => v.capacityKg >= totalWeight) || FLEET[0];
+
+  return {
+    todayDate: formattedTodayDate,
+    todayDayName: currentDayName,
+    points: todayPoints,
+    totalWeight: totalWeight,
+    vehicle: assignedVehicle
+  };
+}
+
+// RENDERIZAÇÃO AUTOMÁTICA NA TELA DE ROTAS
+function renderRoutes() {
+  const routeData = generateAutomaticRoutes();
+  const container = document.getElementById("routePoints");
+  const summaryContainer = document.getElementById("routeSummary");
+  const orderContainer = document.getElementById("routeOrder");
+
+  if (!container) return;
+
+  if (!routeData.points.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <h2>Nenhuma Rota Programada para Hoje (${routeData.todayDayName})</h2>
+        <p>Não há coletas recorrentes ou pontuais agendadas para o dia de hoje.</p>
+      </div>`;
+    summaryContainer.textContent = "Sem operações agendadas.";
+    orderContainer.innerHTML = "";
+    return;
+  }
+
+  // Lista os pontos programados no painel
+  container.innerHTML = `
+    <div class="auto-route-card">
+      <div class="vehicle-badge">
+        🚚 <strong>Veículo Designado:</strong> ${routeData.vehicle.name} (${routeData.vehicle.plate})
+      </div>
+      <p style="margin-top:8px;"><strong>Carga Prevista:</strong> ${routeData.totalWeight} Kg / Máx: ${routeData.vehicle.capacityKg} Kg</p>
+    </div>
+    <br>
+    ${routeData.points.map(r => `
+      <div class="route-point">
+        <span>
+          <strong>${escapeHTML(r.id)} — ${escapeHTML(r.name)}</strong>
+          <small>${escapeHTML(r.type)} | ${escapeHTML(r.materials)} — <strong>${escapeHTML(r.quantity)} ${escapeHTML(r.unit)}</strong></small>
+        </span>
+      </div>
+    `).join("")}
+  `;
+
+  summaryContainer.textContent = `${routeData.points.length} coleta(s) agendada(s) para hoje (${routeData.todayDayName}).`;
+  
+  orderContainer.innerHTML = routeData.points.map((r, i) =>
+    `<li><strong>Ponto ${i + 1}:</strong> ${escapeHTML(r.name)} (${escapeHTML(r.type)}) — ${escapeHTML(r.frequency)}</li>`
+  ).join("");
+}
