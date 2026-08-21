@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Qanelas:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Leaflet CSS para o Mapa Interativo -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 </head>
 <body>
   <header class="topbar">
@@ -34,6 +36,7 @@
     </aside>
 
     <main class="content">
+      <!-- DASHBOARD SECTION -->
       <section id="dashboard" class="section active-section">
         <div class="page-title">
           <div>
@@ -79,14 +82,18 @@
         </div>
       </section>
 
+      <!-- SOLICITAÇÕES SECTION -->
       <section id="solicitacoes" class="section">
         <div class="page-title">
           <div>
             <p class="eyebrow">OPERAÇÃO</p>
             <h1>Solicitações</h1>
-            <p>Cadastre e acompanhe pedidos de coleta.</p>
+            <p>Cadastre, compartilhe o formulário e acompanhe pedidos de coleta.</p>
           </div>
-          <button class="primary-btn" id="novaSolicitacaoBtn2">+ Nova solicitação</button>
+          <div class="action-buttons">
+            <button class="share-btn" id="shareFormBtn">🔗 Copiar Link Público do Formulário</button>
+            <button class="primary-btn" id="novaSolicitacaoBtn2">+ Nova solicitação</button>
+          </div>
         </div>
 
         <div class="panel">
@@ -106,107 +113,40 @@
         </div>
       </section>
 
-      <section id="coletas" class="section">
-        <div class="page-title">
-          <div>
-            <p class="eyebrow">OPERAÇÃO</p>
-            <h1>Coletas</h1>
-            <p>Visualização das coletas programadas e realizadas.</p>
+      <!-- SEÇÃO DO FORMULÁRIO PÚBLICO COMPARTILHÁVEL -->
+      <section id="public-form-section" class="section">
+        <div class="public-container">
+          <div class="public-header">
+            <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="public-logo">
+            <h1>Solicitar Coleta de Resíduos</h1>
+            <p>Associação Sol Nascente — Centro de Triagem Trairi</p>
+            <p class="public-sub">Preencha o formulário simples abaixo para agendar a busca dos seus recicláveis!</p>
           </div>
-        </div>
-        <div class="empty-state">
-          <div class="empty-icon">♻</div>
-          <h2>Nenhuma coleta programada</h2>
-          <p>As solicitações agendadas aparecerão aqui.</p>
-        </div>
-      </section>
-
-      <section id="rotas" class="section">
-        <div class="page-title">
-          <div>
-            <p class="eyebrow">LOGÍSTICA</p>
-            <h1>Rotas</h1>
-            <p>Organize os pontos de coleta para os motoristas.</p>
-          </div>
-          <button class="primary-btn" id="createRouteBtn">+ Criar rota</button>
-        </div>
-
-        <div class="route-layout">
-          <div class="panel">
-            <div class="panel-heading">
-              <div>
-                <h2>Pontos disponíveis</h2>
-                <p>Selecione solicitações agendadas.</p>
-              </div>
-            </div>
-            <div id="routePoints"></div>
-          </div>
-          <div class="panel route-summary">
-            <h2>Resumo da rota</h2>
-            <p id="routeSummary">Nenhum ponto selecionado.</p>
-            <ol id="routeOrder"></ol>
+          <div class="public-card" id="publicFormContainer">
+            <!-- Formulário é injetado aqui via JS -->
           </div>
         </div>
       </section>
 
-      <section id="clientes" class="section">
-        <div class="page-title">
-          <div>
-            <p class="eyebrow">CADASTRO</p>
-            <h1>Clientes</h1>
-            <p>Base de solicitantes cadastrados no sistema.</p>
-          </div>
-        </div>
-        <div id="clientsList" class="client-grid"></div>
-      </section>
+      <!-- ROTAS, COLETAS, CLIENTES -->
+      ...
     </main>
   </div>
 
+  <!-- MODAL DE SOLICITAÇÃO (PAINEL INTERNO) -->
   <div class="modal hidden" id="requestModal">
     <div class="modal-card">
       <button class="close-btn" id="closeModal" aria-label="Fechar">×</button>
       <p class="eyebrow">NOVA SOLICITAÇÃO</p>
-      <h2>Solicitar coleta</h2>
-      <form id="requestForm">
-        <div class="form-grid">
-          <label>Nome
-            <input name="name" required maxlength="100" placeholder="Nome do solicitante">
-          </label>
-          <label>Telefone
-            <input name="phone" required inputmode="numeric" maxlength="15" placeholder="(88) 99999-9999">
-          </label>
-          <label>Tipo de local
-            <select name="type" required>
-              <option value="">Selecione</option>
-              <option>Residência</option>
-              <option>Estabelecimento</option>
-              <option>Evento</option>
-              <option>Condomínio</option>
-              <option>Outro</option>
-            </select>
-          </label>
-          <label>CEP
-            <input name="cep" inputmode="numeric" maxlength="9" placeholder="00000-000">
-          </label>
-          <label class="full">Endereço
-            <input name="address" required placeholder="Rua, número, complemento">
-          </label>
-          <label>Bairro
-            <input name="neighborhood" required placeholder="Bairro">
-          </label>
-          <label>Materiais
-            <input name="materials" required placeholder="Ex.: papel, plástico, metal">
-          </label>
-          <label class="full">Observações
-            <textarea name="notes" rows="3" placeholder="Informações adicionais"></textarea>
-          </label>
-        </div>
-        <button class="primary-btn full-btn" type="submit">Cadastrar solicitação</button>
-      </form>
+      <h2>Solicitar Coleta</h2>
+      <div id="modalFormContainer"></div>
     </div>
   </div>
 
   <div id="toast" class="toast"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="app.js"></script>
 </body>
 </html>
