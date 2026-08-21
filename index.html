@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Sistema de Gestão de Coletas - Associação Sol Nascente">
-  <title>Sol Nascente | Gestão de Coletas</title>
+  <meta name="description" content="Sistema de Gestão de Coletas - Inciclo / Associação Sol Nascente / Recicle+ Trairi">
+  <title>Sistema de Gestão de Coletas de Resíduos</title>
   
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Qanelas:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Leaflet CSS for Map -->
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
       <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="brand-logo">
-      <div>
-        <strong>Sistema de Coletas</strong>
+      <div class="brand-title-wrap">
+        <strong>Sistema de Coletas de Resíduos</strong>
         <span>Centro de Triagem Trairi</span>
       </div>
     </div>
@@ -29,11 +29,11 @@
   <div class="layout">
     <aside class="sidebar" id="sidebar">
       <nav>
-        <button class="nav-item active" data-section="dashboard">▦ <span>Dashboard</span></button>
-        <button class="nav-item" data-section="solicitacoes">⌑ <span>Solicitações</span></button>
-        <button class="nav-item" data-section="coletas">♻ <span>Coletas</span></button>
-        <button class="nav-item" data-section="rotas">⌖ <span>Rotas</span></button>
-        <button class="nav-item" data-section="clientes">◉ <span>Clientes</span></button>
+        <button class="nav-item active" data-section="dashboard"><span>Dashboard</span></button>
+        <button class="nav-item" data-section="solicitacoes"><span>Solicitações</span></button>
+        <button class="nav-item" data-section="coletas"><span>Coletas</span></button>
+        <button class="nav-item" data-section="rotas"><span>Rotas</span></button>
+        <button class="nav-item" data-section="clientes"><span>Clientes</span></button>
       </nav>
     </aside>
 
@@ -42,16 +42,16 @@
       <section id="dashboard" class="section active-section">
         <div class="page-title">
           <div>
-            <p class="eyebrow">ASSOCIAÇÃO SOL NASCENTE</p>
-            <h1>Dashboard</h1>
-            <p>Acompanhe as solicitações e operações de coleta.</p>
+            <p class="eyebrow">ASSOCIAÇÃO SOL NASCENTE & PARCEIROS</p>
+            <h1>Painel de Controle</h1>
+            <p>Acompanhamento das solicitações e gerenciamento de operações de coleta.</p>
           </div>
-          <button class="primary-btn" id="novaSolicitacaoBtn">+ Nova solicitação</button>
+          <button class="primary-btn" id="novaSolicitacaoBtn">+ Nova Solicitação</button>
         </div>
 
         <div class="cards">
           <article class="stat-card">
-            <span>Solicitações novas</span>
+            <span>Solicitações Novas</span>
             <strong id="statNovas">0</strong>
             <small>Aguardando análise</small>
           </article>
@@ -61,24 +61,24 @@
             <small>Prontas para coleta</small>
           </article>
           <article class="stat-card">
-            <span>Em rota</span>
+            <span>Em Rota</span>
             <strong id="statEmRota">0</strong>
-            <small>Coletas em andamento</small>
+            <small>Em andamento</small>
           </article>
           <article class="stat-card">
             <span>Finalizadas</span>
             <strong id="statFinalizadas">0</strong>
-            <small>Coletas concluídas</small>
+            <small>Concluídas</small>
           </article>
         </div>
 
         <div class="panel">
           <div class="panel-heading">
             <div>
-              <h2>Últimas solicitações</h2>
-              <p>Registros armazenados neste navegador.</p>
+              <h2>Últimas Solicitações Registradas</h2>
+              <p>Histórico local de solicitações armazenadas.</p>
             </div>
-            <button class="secondary-btn" data-section-link="solicitacoes">Ver todas</button>
+            <button class="secondary-btn" data-section-link="solicitacoes">Ver Todas</button>
           </div>
           <div id="recentList" class="table-wrap"></div>
         </div>
@@ -88,25 +88,25 @@
       <section id="solicitacoes" class="section">
         <div class="page-title">
           <div>
-            <p class="eyebrow">OPERAÇÃO</p>
-            <h1>Solicitações</h1>
-            <p>Cadastre, compartilhe o formulário e acompanhe pedidos de coleta.</p>
+            <p class="eyebrow">OPERAÇÕES</p>
+            <h1>Gestão de Solicitações</h1>
+            <p>Acompanhe, altere o status e compartilhe o formulário público com a comunidade.</p>
           </div>
           <div class="action-buttons">
-            <button class="share-btn" id="shareFormBtn">🔗 Copiar Link Público do Formulário</button>
-            <button class="primary-btn" id="novaSolicitacaoBtn2">+ Nova solicitação</button>
+            <button class="share-btn" id="shareFormBtn">Copiar Link do Formulário Público</button>
+            <button class="primary-btn" id="novaSolicitacaoBtn2">+ Nova Solicitação</button>
           </div>
         </div>
 
         <div class="panel">
           <div class="filters">
-            <input id="searchInput" type="search" placeholder="Pesquisar por nome, telefone ou código...">
+            <input id="searchInput" type="search" placeholder="Buscar por nome, telefone ou número de protocolo...">
             <select id="statusFilter">
-              <option value="">Todos os status</option>
+              <option value="">Todos os Status</option>
               <option value="NOVA">Nova</option>
-              <option value="EM ANÁLISE">Em análise</option>
+              <option value="EM ANÁLISE">Em Análise</option>
               <option value="AGENDADA">Agendada</option>
-              <option value="EM ROTA">Em rota</option>
+              <option value="EM ROTA">Em Rota</option>
               <option value="COLETADA">Coletada</option>
               <option value="FINALIZADA">Finalizada</option>
             </select>
@@ -115,17 +115,22 @@
         </div>
       </section>
 
-      <!-- FORMULÁRIO PÚBLICO STANDALONE SECTION -->
+      <!-- FORMULÁRIO PÚBLICO INSTITUCIONAL -->
       <section id="public-form-section" class="section">
         <div class="public-container">
           <div class="public-header">
-            <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="public-logo">
-            <h1>Solicitar Coleta de Resíduos</h1>
-            <p>Associação Sol Nascente — Centro de Triagem Trairi</p>
-            <p class="public-sub">Preencha o formulário simples abaixo para agendar a busca dos seus recicláveis!</p>
+            <!-- 3 LOGOS ALINHADAS CONFORME MANUAL DE MARCA -->
+            <div class="partner-logos-container">
+              <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="partner-logo">
+              <img src="Logo Recicle+ slogan 3.jpg" alt="Recicle+ Trairi" class="partner-logo">
+              <img src="Logo Inciclo vertical 3.jpg" alt="Inciclo Soluções em Resíduos" class="partner-logo">
+            </div>
+            <h1>Formulário de Solicitação de Coleta de Resíduos</h1>
+            <p>Associação Sol Nascente | Recicle+ Trairi | Inciclo Soluções em Resíduos</p>
+            <p class="public-sub">Preencha as informações do formulário abaixo para registrar o pedido de coleta reciclável.</p>
           </div>
           <div class="public-card" id="publicFormContainer">
-            <!-- Form will be injected here for standalone mode -->
+            <!-- Form público injetado via JavaScript -->
           </div>
         </div>
       </section>
@@ -135,14 +140,13 @@
         <div class="page-title">
           <div>
             <p class="eyebrow">OPERAÇÃO</p>
-            <h1>Coletas</h1>
-            <p>Visualização das coletas programadas e realizadas.</p>
+            <h1>Coletas Programadas</h1>
+            <p>Detalhamento e agenda das coletas ativas.</p>
           </div>
         </div>
         <div class="empty-state">
-          <div class="empty-icon">♻</div>
-          <h2>Nenhuma coleta programada</h2>
-          <p>As solicitações agendadas aparecerão aqui.</p>
+          <h2>Nenhuma Coleta Programada</h2>
+          <p>As solicitações marcadas como agendadas aparecerão nesta área.</p>
         </div>
       </section>
 
@@ -151,24 +155,24 @@
         <div class="page-title">
           <div>
             <p class="eyebrow">LOGÍSTICA</p>
-            <h1>Rotas</h1>
-            <p>Organize os pontos de coleta para os motoristas.</p>
+            <h1>Planejamento de Rotas</h1>
+            <p>Agrupamento de pontos para otimização do itinerário de coleta.</p>
           </div>
-          <button class="primary-btn" id="createRouteBtn">+ Criar rota</button>
+          <button class="primary-btn" id="createRouteBtn">+ Gerar Rota</button>
         </div>
 
         <div class="route-layout">
           <div class="panel">
             <div class="panel-heading">
               <div>
-                <h2>Pontos disponíveis</h2>
-                <p>Selecione solicitações agendadas.</p>
+                <h2>Pontos Disponíveis</h2>
+                <p>Selecione os registros agendados.</p>
               </div>
             </div>
             <div id="routePoints"></div>
           </div>
           <div class="panel route-summary">
-            <h2>Resumo da rota</h2>
+            <h2>Resumo da Rota</h2>
             <p id="routeSummary">Nenhum ponto selecionado.</p>
             <ol id="routeOrder"></ol>
           </div>
@@ -180,8 +184,8 @@
         <div class="page-title">
           <div>
             <p class="eyebrow">CADASTRO</p>
-            <h1>Clientes</h1>
-            <p>Base de solicitantes cadastrados no sistema.</p>
+            <h1>Base de Solicitantes</h1>
+            <p>Listagem de cidadãos e parceiros cadastrados.</p>
           </div>
         </div>
         <div id="clientsList" class="client-grid"></div>
@@ -189,19 +193,19 @@
     </main>
   </div>
 
-  <!-- MODAL DE SOLICITAÇÃO (INTERNO) -->
+  <!-- MODAL DE SOLICITAÇÃO INTERNA -->
   <div class="modal hidden" id="requestModal">
     <div class="modal-card">
-      <button class="close-btn" id="closeModal" aria-label="Fechar">×</button>
-      <p class="eyebrow">NOVA SOLICITAÇÃO</p>
-      <h2>Solicitar Coleta</h2>
+      <button class="close-btn" id="closeModal" aria-label="Fechar">✕</button>
+      <p class="eyebrow">REGISTRO DE COLETA</p>
+      <h2>Nova Solicitação Interna</h2>
       <div id="modalFormContainer"></div>
     </div>
   </div>
 
   <div id="toast" class="toast"></div>
 
-  <!-- Leaflet JS (carregado ANTES do app.js) -->
+  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="app.js"></script>
 </body>
