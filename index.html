@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sistema de Gestão de Coletas - Associação Sol Nascente">
+  <title>Sol Nascente | Gestão de Coletas</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Qanelas:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="brand-logo">
+      <div>
+        <strong>Sistema de Coletas</strong>
+        <span>Centro de Triagem Trairi</span>
+      </div>
+    </div>
+    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <nav>
+        <button class="nav-item active" data-section="dashboard">▦ <span>Dashboard</span></button>
+        <button class="nav-item" data-section="solicitacoes">⌑ <span>Solicitações</span></button>
+        <button class="nav-item" data-section="coletas">♻ <span>Coletas</span></button>
+        <button class="nav-item" data-section="rotas">⌖ <span>Rotas</span></button>
+        <button class="nav-item" data-section="clientes">◉ <span>Clientes</span></button>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <section id="dashboard" class="section active-section">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">ASSOCIAÇÃO SOL NASCENTE</p>
+            <h1>Dashboard</h1>
+            <p>Acompanhe as solicitações e operações de coleta.</p>
+          </div>
+          <button class="primary-btn" id="novaSolicitacaoBtn">+ Nova solicitação</button>
+        </div>
+
+        <div class="cards">
+          <article class="stat-card">
+            <span>Solicitações novas</span>
+            <strong id="statNovas">0</strong>
+            <small>Aguardando análise</small>
+          </article>
+          <article class="stat-card">
+            <span>Agendadas</span>
+            <strong id="statAgendadas">0</strong>
+            <small>Prontas para coleta</small>
+          </article>
+          <article class="stat-card">
+            <span>Em rota</span>
+            <strong id="statEmRota">0</strong>
+            <small>Coletas em andamento</small>
+          </article>
+          <article class="stat-card">
+            <span>Finalizadas</span>
+            <strong id="statFinalizadas">0</strong>
+            <small>Coletas concluídas</small>
+          </article>
+        </div>
+
+        <div class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Últimas solicitações</h2>
+              <p>Registros armazenados neste navegador.</p>
+            </div>
+            <button class="secondary-btn" data-section-link="solicitacoes">Ver todas</button>
+          </div>
+          <div id="recentList" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="solicitacoes" class="section">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">OPERAÇÃO</p>
+            <h1>Solicitações</h1>
+            <p>Cadastre e acompanhe pedidos de coleta.</p>
+          </div>
+          <button class="primary-btn" id="novaSolicitacaoBtn2">+ Nova solicitação</button>
+        </div>
+
+        <div class="panel">
+          <div class="filters">
+            <input id="searchInput" type="search" placeholder="Pesquisar por nome, telefone ou código...">
+            <select id="statusFilter">
+              <option value="">Todos os status</option>
+              <option value="NOVA">Nova</option>
+              <option value="EM ANÁLISE">Em análise</option>
+              <option value="AGENDADA">Agendada</option>
+              <option value="EM ROTA">Em rota</option>
+              <option value="COLETADA">Coletada</option>
+              <option value="FINALIZADA">Finalizada</option>
+            </select>
+          </div>
+          <div id="requestsTable" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="coletas" class="section">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">OPERAÇÃO</p>
+            <h1>Coletas</h1>
+            <p>Visualização das coletas programadas e realizadas.</p>
+          </div>
+        </div>
+        <div class="empty-state">
+          <div class="empty-icon">♻</div>
+          <h2>Nenhuma coleta programada</h2>
+          <p>As solicitações agendadas aparecerão aqui.</p>
+        </div>
+      </section>
+
+      <section id="rotas" class="section">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">LOGÍSTICA</p>
+            <h1>Rotas</h1>
+            <p>Organize os pontos de coleta para os motoristas.</p>
+          </div>
+          <button class="primary-btn" id="createRouteBtn">+ Criar rota</button>
+        </div>
+
+        <div class="route-layout">
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Pontos disponíveis</h2>
+                <p>Selecione solicitações agendadas.</p>
+              </div>
+            </div>
+            <div id="routePoints"></div>
+          </div>
+          <div class="panel route-summary">
+            <h2>Resumo da rota</h2>
+            <p id="routeSummary">Nenhum ponto selecionado.</p>
+            <ol id="routeOrder"></ol>
+          </div>
+        </div>
+      </section>
+
+      <section id="clientes" class="section">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">CADASTRO</p>
+            <h1>Clientes</h1>
+            <p>Base de solicitantes cadastrados no sistema.</p>
+          </div>
+        </div>
+        <div id="clientsList" class="client-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal hidden" id="requestModal">
+    <div class="modal-card">
+      <button class="close-btn" id="closeModal" aria-label="Fechar">×</button>
+      <p class="eyebrow">NOVA SOLICITAÇÃO</p>
+      <h2>Solicitar coleta</h2>
+      <form id="requestForm">
+        <div class="form-grid">
+          <label>Nome
+            <input name="name" required maxlength="100" placeholder="Nome do solicitante">
+          </label>
+          <label>Telefone
+            <input name="phone" required inputmode="numeric" maxlength="15" placeholder="(88) 99999-9999">
+          </label>
+          <label>Tipo de local
+            <select name="type" required>
+              <option value="">Selecione</option>
+              <option>Residência</option>
+              <option>Estabelecimento</option>
+              <option>Evento</option>
+              <option>Condomínio</option>
+              <option>Outro</option>
+            </select>
+          </label>
+          <label>CEP
+            <input name="cep" inputmode="numeric" maxlength="9" placeholder="00000-000">
+          </label>
+          <label class="full">Endereço
+            <input name="address" required placeholder="Rua, número, complemento">
+          </label>
+          <label>Bairro
+            <input name="neighborhood" required placeholder="Bairro">
+          </label>
+          <label>Materiais
+            <input name="materials" required placeholder="Ex.: papel, plástico, metal">
+          </label>
+          <label class="full">Observações
+            <textarea name="notes" rows="3" placeholder="Informações adicionais"></textarea>
+          </label>
+        </div>
+        <button class="primary-btn full-btn" type="submit">Cadastrar solicitação</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
