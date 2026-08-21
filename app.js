@@ -622,7 +622,44 @@ function deleteVehicle(id) {
   toast("Veículo removido com sucesso.");
 }
 
-// ROTEIRIZAÇÃO INTELIGENTE POR VEÍCULO (EM LITROS)
+// 🧮 FUNÇÃO DE CONVERSÃO DE UNIDADES/MATERIAIS PARA LITROS
+function convertToLiters(quantityStr, unitStr, materialsStr = "") {
+  const qty = parseFloat(quantityStr) || 0;
+  if (qty <= 0) return 0;
+
+  const unit = (unitStr || "").toLowerCase();
+  const mat = (materialsStr || "").toLowerCase();
+
+  // 1. Unidades volumétricas padronizadas
+  if (unit.includes("saco")) return qty * 100;      // Sacos de 100 Litros
+  if (unit.includes("bombona")) return qty * 200;   // Bombona padrão 200L
+  if (unit.includes("bigbag")) return qty * 1000;   // BigBag padrão 1000L (1m³)
+  if (unit.includes("caixa")) return qty * 50;      // Caixa média 50L
+
+  // 2. Conversão de Kg para Litros via Densidade Aparente Média
+  if (unit.includes("kg")) {
+    let densityKgPerL = 0.15; // Densidade média padrão (0,15 kg/L)
+
+    if (mat.includes("plástico") || mat.includes("pet")) {
+      densityKgPerL = 0.05; // Plástico é muito leve e ocupa muito espaço
+    } else if (mat.includes("papel") || mat.includes("papelão")) {
+      densityKgPerL = 0.10;
+    } else if (mat.includes("metal") || mat.includes("latas")) {
+      densityKgPerL = 0.15;
+    } else if (mat.includes("eletrônicos")) {
+      densityKgPerL = 0.25;
+    } else if (mat.includes("vidro")) {
+      densityKgPerL = 0.35; // Vidro é denso/pesado
+    }
+
+    // Volume (Litros) = Massa (Kg) / Densidade (Kg/L)
+    return qty / densityKgPerL;
+  }
+
+  return qty; // Retorno preventivo
+}
+
+// 🚚 ROTEIRIZAÇÃO INTELIGENTE COM CONVERSÃO DE DENSIDADE E VOLUME
 function renderRoutes() {
   const container = document.getElementById("routesByVehicleContainer");
   if (!container) return;
@@ -632,7 +669,7 @@ function renderRoutes() {
   const currentDayName = weekdays[today.getDay()];
   const formattedTodayDate = today.toLocaleDateString('pt-BR');
 
-  // Filtra solicitações agendadas para o dia
+  // Filtra as solicitações agendadas para o dia
   const todayPoints = requests.filter(r => {
     if (r.status !== "AGENDADA") return false;
     if (!r.frequency) return false;
@@ -662,15 +699,13 @@ function renderRoutes() {
     let vehiclePoints = [];
 
     unassignedPoints = unassignedPoints.filter(point => {
-      let pointLiters = parseFloat(point.quantity) || 0;
-      if (point.unit && point.unit.includes("Sacos")) {
-        pointLiters = pointLiters * 100; // Converte Sacos de 100L
-      }
+      // Executa a conversão precisa para Litros
+      const pointLiters = convertToLiters(point.quantity, point.unit, point.materials);
 
       if (pointLiters >= parseFloat(vehicle.minVolumeLiters) && pointLiters <= vehicleCapacityLeft) {
-        vehiclePoints.push({ ...point, calculatedLiters: pointLiters });
+        vehiclePoints.push({ ...point, calculatedLiters: Math.round(pointLiters) });
         vehicleCapacityLeft -= pointLiters;
-        return false;
+        return false; // Remove da lista de pendentes
       }
       return true;
     });
@@ -682,13 +717,13 @@ function renderRoutes() {
         <div class="panel-heading">
           <div>
             <h2>🚚 ${escapeHTML(vehicle.name)} (${escapeHTML(vehicle.plate)})</h2>
-            <p>Capacidade Máx: <strong>${vehicle.capacityLiters} Litros</strong> | Volume Alocado: <strong>${totalAssignedLiters} Litros</strong></p>
+            <p>Capacidade Máx: <strong>${vehicle.capacityLiters} L</strong> | Volume Estimado Alocado: <strong>${totalAssignedLiters} Litros</strong></p>
           </div>
         </div>
         ${vehiclePoints.length ? `
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Ordem</th><th>Código</th><th>Solicitante</th><th>Local</th><th>Carga Declarada</th></tr></thead>
+              <thead><tr><th>Ordem</th><th>Código</th><th>Solicitante</th><th>Local</th><th>Carga Declarada</th><th>Volume Estimado</th></tr></thead>
               <tbody>
                 ${vehiclePoints.map((p, index) => `
                   <tr>
@@ -696,7 +731,8 @@ function renderRoutes() {
                     <td>${escapeHTML(p.id)}</td>
                     <td>${escapeHTML(p.name)}</td>
                     <td>${escapeHTML(p.type)} ${p.customLocationName ? `(${escapeHTML(p.customLocationName)})` : ''}</td>
-                    <td><strong>${escapeHTML(p.quantity)} ${escapeHTML(p.unit)}</strong></td>
+                    <td>${escapeHTML(p.quantity)} ${escapeHTML(p.unit)} (${escapeHTML(p.materials)})</td>
+                    <td><strong>≈ ${p.calculatedLiters} L</strong></td>
                   </tr>
                 `).join("")}
               </tbody>
@@ -713,7 +749,10 @@ function renderRoutes() {
         <h2 style="color: var(--orange);">⚠️ Coletas Pendentes / Excedentes</h2>
         <p>Estes pontos não foram alocados devido ao limite de capacidade dos veículos:</p>
         <ul style="margin-top:10px;">
-          ${unassignedPoints.map(p => `<li><strong>${p.name}</strong> - ${p.quantity} ${p.unit} (${p.frequency})</li>`).join("")}
+          ${unassignedPoints.map(p => {
+            const l = Math.round(convertToLiters(p.quantity, p.unit, p.materials));
+            return `<li><strong>${p.name}</strong> - ${p.quantity} ${p.unit} (≈ ${l} Litros)</li>`;
+          }).join("")}
         </ul>
       </div>
     `;
