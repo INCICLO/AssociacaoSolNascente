@@ -15,27 +15,31 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 </head>
 <body>
- <header class="topbar">
-  <div class="brand">
-    <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="brand-logo">
-    <div class="brand-title-wrap">
-      <strong>Sistema de Coletas de Resíduos</strong>
-      <span>Centro de Triagem Trairi</span>
+  <header class="topbar">
+    <div class="brand">
+      <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="brand-logo">
+      <div class="brand-title-wrap">
+        <strong>Sistema de Coletas de Resíduos</strong>
+        <span>Centro de Triagem Trairi</span>
+      </div>
     </div>
-  </div>
 
-  <!-- Toggle no topo do painel -->
-  <div class="theme-toggle-wrap">
-    <span>Dia</span>
-    <label class="switch">
-      <input type="checkbox" class="theme-toggle-checkbox">
-      <span class="slider"></span>
-    </label>
-    <span>Noite</span>
-  </div>
+    <!-- Toggle com Ícones no Painel -->
+    <div class="theme-toggle-wrap">
+      <span class="theme-icon theme-icon-sun">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      </span>
+      <label class="switch">
+        <input type="checkbox" class="theme-toggle-checkbox">
+        <span class="slider"></span>
+      </label>
+      <span class="theme-icon theme-icon-moon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </span>
+    </div>
 
-  <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
-</header>
+    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
+  </header>
 
   <div class="layout">
     <aside class="sidebar" id="sidebar">
@@ -126,35 +130,39 @@
         </div>
       </section>
 
-     <!-- FORMULÁRIO PÚBLICO INSTITUCIONAL -->
-<section id="public-form-section" class="section">
-  <!-- Toggle Flutuante no Formulário Público -->
-  <div class="theme-toggle-wrap theme-toggle-public">
-    <span>Dia</span>
-    <label class="switch">
-      <input type="checkbox" class="theme-toggle-checkbox">
-      <span class="slider"></span>
-    </label>
-    <span>Noite</span>
-  </div>
+      <!-- FORMULÁRIO PÚBLICO INSTITUCIONAL -->
+      <section id="public-form-section" class="section">
+        <!-- Toggle Flutuante no Formulário Público -->
+        <div class="theme-toggle-wrap theme-toggle-public">
+          <span class="theme-icon theme-icon-sun">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+          </span>
+          <label class="switch">
+            <input type="checkbox" class="theme-toggle-checkbox">
+            <span class="slider"></span>
+          </label>
+          <span class="theme-icon theme-icon-moon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 0 1 1-9-9Z"/></svg>
+          </span>
+        </div>
 
-  <div class="public-container">
-    <div class="public-header">
-      <!-- 3 LOGOS ALINHADAS CONFORME MANUAL DE MARCA -->
-      <div class="partner-logos-container">
-        <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="partner-logo">
-        <img src="logo_recicle_mais.png" alt="Recicle+ Trairi" class="partner-logo">
-        <img src="logo_inciclo.png" alt="Inciclo Soluções em Resíduos" class="partner-logo">
-      </div>
-      <h1>Formulário de Solicitação de Coleta de Resíduos</h1>
-      <p>Associação Sol Nascente | Recicle+ Trairi | Inciclo Soluções em Resíduos</p>
-      <p class="public-sub">Preencha as informações do formulário abaixo para registrar o pedido de coleta reciclável.</p>
-    </div>
-    <div class="public-card" id="publicFormContainer">
-      <!-- Form público injetado via JavaScript -->
-    </div>
-  </div>
-</section>
+        <div class="public-container">
+          <div class="public-header">
+            <!-- 3 LOGOS ALINHADAS CONFORME MANUAL DE MARCA -->
+            <div class="partner-logos-container">
+              <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="partner-logo">
+              <img src="logo_recicle_mais.png" alt="Recicle+ Trairi" class="partner-logo">
+              <img src="logo_inciclo.png" alt="Inciclo Soluções em Resíduos" class="partner-logo">
+            </div>
+            <h1>Formulário de Solicitação de Coleta de Resíduos</h1>
+            <p>Associação Sol Nascente | Recicle+ Trairi | Inciclo Soluções em Resíduos</p>
+            <p class="public-sub">Preencha as informações do formulário abaixo para registrar o pedido de coleta reciclável.</p>
+          </div>
+          <div class="public-card" id="publicFormContainer">
+            <!-- Form público injetado via JavaScript -->
+          </div>
+        </div>
+      </section>
 
       <!-- COLETAS SECTION -->
       <section id="coletas" class="section">
