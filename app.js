@@ -218,18 +218,40 @@ function initFormEvents(formId) {
   const customWrap = form.querySelector('.custom-location-wrap');
   const customInput = customWrap ? customWrap.querySelector('input') : null;
 
-  typeSelect.addEventListener('change', () => {
-    if (typeSelect.value && typeSelect.value !== 'Residência') {
-      customWrap.classList.remove('hidden');
-      if (customInput) customInput.required = true;
-    } else {
-      customWrap.classList.add('hidden');
-      if (customInput) {
-        customInput.required = false;
-        customInput.value = '';
+  if (typeSelect && customWrap) {
+    typeSelect.addEventListener('change', () => {
+      if (typeSelect.value && typeSelect.value !== 'Residência') {
+        customWrap.classList.remove('hidden');
+        if (customInput) customInput.required = true;
+      } else {
+        customWrap.classList.add('hidden');
+        if (customInput) {
+          customInput.required = false;
+          customInput.value = '';
+        }
       }
-    }
-  });
+    });
+  }
+
+  // Toggle do campo "Outros" para especificação de resíduos
+  const otherCheckbox = form.querySelector('#otherMaterialCheckbox');
+  const otherWrap = form.querySelector('#otherMaterialWrap');
+  const otherInput = form.querySelector('#otherMaterialText');
+
+  if (otherCheckbox && otherWrap) {
+    otherCheckbox.addEventListener('change', () => {
+      if (otherCheckbox.checked) {
+        otherWrap.classList.remove('hidden');
+        if (otherInput) otherInput.required = true;
+      } else {
+        otherWrap.classList.add('hidden');
+        if (otherInput) {
+          otherInput.required = false;
+          otherInput.value = '';
+        }
+      }
+    });
+  }
 
   // Init Leaflet Map
   initMap(formId);
@@ -246,10 +268,15 @@ function initFormEvents(formId) {
       return;
     }
 
-    const checkedMaterials = [...form.querySelectorAll('input[name="materials_list"]:checked')].map(c => c.value);
+    let checkedMaterials = [...form.querySelectorAll('input[name="materials_list"]:checked')].map(c => c.value);
     if (checkedMaterials.length === 0) {
       toast("Selecione ao menos um tipo de material para agendar a coleta.");
       return;
+    }
+
+    // Se "Outros" estiver marcado, anexa a especificação digitada pelo usuário
+    if (otherCheckbox && otherCheckbox.checked && otherInput && otherInput.value.trim() !== '') {
+      checkedMaterials = checkedMaterials.map(m => m === 'Outros' ? `Outros (${otherInput.value.trim()})` : m);
     }
 
     const formData = new FormData(form);
