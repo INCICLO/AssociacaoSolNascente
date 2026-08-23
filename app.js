@@ -1,41 +1,22 @@
-/* ============================================================
-   SISTEMA DE GESTÃO DE COLETAS — ASSOCIAÇÃO SOL NASCENTE
-   MOTOR V2 DE ROTEIRIZAÇÃO
-   ============================================================ */
-
 const STORAGE_KEY = "sol_nascente_solicitacoes_v1";
 const VEHICLES_STORAGE_KEY = "sol_nascente_veiculos_v1";
 const ROUTES_STORAGE_KEY = "sol_nascente_rotas_v2";
 
-/* ============================================================
-   CONFIGURAÇÕES GERAIS
-   ============================================================ */
+// ============================================================
+// CONFIGURAÇÕES GERAIS
+// ============================================================
 
-const ROUTING_CONFIG = {
-  depot: {
-    lat: -3.3752,
-    lng: -39.2689,
-    name: "Base / Galpão da Associação"
-  },
-
-  // Raio aproximado usado para agrupamento geográfico.
-  // O agrupamento final também considera a capacidade dos veículos.
-  clusterRadiusKm: 8,
-
-  // Velocidade média usada quando o serviço de roteamento
-  // não conseguir retornar uma estimativa.
-  averageSpeedKmH: 30,
-
-  // Tempo operacional médio por parada.
-  serviceMinutesPerStop: 10,
-
-  // Serviço utilizado para calcular distância pelas ruas.
-  osrmUrl: "https://router.project-osrm.org/route/v1/driving/"
+const DEPOT = {
+  lat: -3.3752,
+  lng: -39.2689,
+  name: "Base / Galpão da Associação"
 };
 
-/* ============================================================
-   DADOS PADRÃO
-   ============================================================ */
+const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
+
+// ============================================================
+// DADOS PADRÃO
+// ============================================================
 
 const defaultRequests = [
   {
@@ -62,7 +43,7 @@ const defaultVehicles = [
     name: "Triciclo / Reboque",
     plate: "TRI-01",
     capacityLiters: 1000,
-    capacityKg: 300,
+    capacityKg: 500,
     minVolumeLiters: 0
   },
   {
@@ -70,14 +51,14 @@ const defaultVehicles = [
     name: "Caminhão Baú",
     plate: "CAM-01",
     capacityLiters: 10000,
-    capacityKg: 2000,
+    capacityKg: 2500,
     minVolumeLiters: 2000
   }
 ];
 
-/* ============================================================
-   CARREGAMENTO DOS DADOS
-   ============================================================ */
+// ============================================================
+// CARREGAMENTO
+// ============================================================
 
 let requests =
   JSON.parse(localStorage.getItem(STORAGE_KEY) || "null") ||
@@ -87,47 +68,13 @@ let vehicles =
   JSON.parse(localStorage.getItem(VEHICLES_STORAGE_KEY) || "null") ||
   defaultVehicles;
 
-let routes =
+let generatedRoutes =
   JSON.parse(localStorage.getItem(ROUTES_STORAGE_KEY) || "null") ||
   [];
 
-/* ============================================================
-   MIGRAÇÃO DE VEÍCULOS ANTIGOS
-   ============================================================ */
-
-function migrateVehicles() {
-  let changed = false;
-
-  vehicles = vehicles.map(vehicle => {
-    const v = { ...vehicle };
-
-    if (typeof v.capacityKg === "undefined") {
-      /*
-       * Compatibilidade com veículos cadastrados na V1.
-       *
-       * Se o usuário ainda não cadastrou capacidade em kg,
-       * o sistema não bloqueará a carga por peso.
-       */
-      v.capacityKg = null;
-      changed = true;
-    }
-
-    if (typeof v.minVolumeLiters === "undefined") {
-      v.minVolumeLiters = 0;
-      changed = true;
-    }
-
-    return v;
-  });
-
-  if (changed) saveVehicles();
-}
-
-migrateVehicles();
-
-/* ============================================================
-   PERSISTÊNCIA
-   ============================================================ */
+// ============================================================
+// SALVAMENTO
+// ============================================================
 
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
@@ -143,13 +90,13 @@ function saveVehicles() {
 function saveRoutes() {
   localStorage.setItem(
     ROUTES_STORAGE_KEY,
-    JSON.stringify(routes)
+    JSON.stringify(generatedRoutes)
   );
 }
 
-/* ============================================================
-   IDs
-   ============================================================ */
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
 
 function nextId() {
   const year = new Date().getFullYear();
@@ -169,7 +116,7 @@ function nextId() {
 function nextRouteId() {
   const year = new Date().getFullYear();
 
-  const numbers = routes
+  const numbers = generatedRoutes
     .map(r => Number((r.id || "").split("-").pop()))
     .filter(Number.isFinite);
 
@@ -180,10 +127,6 @@ function nextRouteId() {
 
   return `ROT-${year}-${next}`;
 }
-
-/* ============================================================
-   UTILITÁRIOS
-   ============================================================ */
 
 function escapeHTML(value = "") {
   return String(value).replace(/[&<>"']/g, c => ({
@@ -196,16 +139,9 @@ function escapeHTML(value = "") {
 }
 
 function statusClass(status = "") {
-  return String(status)
+  return status
     .replaceAll(" ", "-")
-    .replaceAll("Á", "A")
-    .replaceAll("Ã", "A")
-    .replaceAll("É", "E")
-    .replaceAll("Ê", "E")
-    .replaceAll("Í", "I")
-    .replaceAll("Ó", "O")
-    .replaceAll("Ô", "O")
-    .replaceAll("Ú", "U");
+    .replaceAll("Á", "Á");
 }
 
 function statusBadge(status) {
@@ -218,45 +154,103 @@ function statusBadge(status) {
   `;
 }
 
-function formatNumber(value, decimals = 0) {
-  return Number(value || 0).toLocaleString("pt-BR", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
-  });
+function formatDateBR(date) {
+  return date.toLocaleDateString("pt-BR");
 }
 
-function formatDistance(km) {
-  if (!Number.isFinite(km)) return "—";
+function dateToISO(date) {
+  const d = new Date(date);
 
-  if (km < 1) {
-    return `${Math.round(km * 1000)} m`;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeDate(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function sameDate(dateA, dateB) {
+  return dateToISO(dateA) === dateToISO(dateB);
+}
+
+function distanceKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+
+  return R * 2 * Math.atan2(
+    Math.sqrt(a),
+    Math.sqrt(1 - a)
+  );
+}
+
+// ============================================================
+// NAVEGAÇÃO
+// ============================================================
+
+function showSection(sectionId) {
+  document
+    .querySelectorAll(".section")
+    .forEach(s => s.classList.remove("active-section"));
+
+  document
+    .querySelectorAll(".nav-item")
+    .forEach(b => b.classList.remove("active"));
+
+  const targetSection =
+    document.getElementById(sectionId);
+
+  if (targetSection) {
+    targetSection.classList.add("active-section");
   }
 
-  return `${km.toFixed(1).replace(".", ",")} km`;
-}
+  const navBtn = document.querySelector(
+    `.nav-item[data-section="${sectionId}"]`
+  );
 
-function formatDuration(minutes) {
-  if (!Number.isFinite(minutes)) return "—";
-
-  const total = Math.max(0, Math.round(minutes));
-  const hours = Math.floor(total / 60);
-  const mins = total % 60;
-
-  if (hours <= 0) {
-    return `${mins} min`;
+  if (navBtn) {
+    navBtn.classList.add("active");
   }
 
-  return `${hours}h${String(mins).padStart(2, "0")}`;
+  document
+    .getElementById("sidebar")
+    ?.classList.remove("open");
+
+  if (sectionId === "dashboard") renderDashboard();
+  if (sectionId === "solicitacoes") renderRequests();
+  if (sectionId === "veiculos") renderVehicles();
+  if (sectionId === "rotas") renderRoutes();
+  if (sectionId === "clientes") renderClients();
 }
 
-/* ============================================================
-   NAVEGAÇÃO
-   ============================================================ */
+// ============================================================
+// FORMULÁRIO PÚBLICO
+// ============================================================
 
 function checkPublicURL() {
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams =
+    new URLSearchParams(window.location.search);
 
   if (urlParams.get("form") === "public") {
+
     document.body.classList.add("public-mode");
 
     const container =
@@ -270,76 +264,26 @@ function checkPublicURL() {
     }
 
     showSection("public-form-section");
+
     return true;
   }
 
   document.body.classList.remove("public-mode");
+
   return false;
 }
 
-function showSection(sectionId) {
-  document
-    .querySelectorAll(".section")
-    .forEach(s =>
-      s.classList.remove("active-section")
-    );
-
-  document
-    .querySelectorAll(".nav-item")
-    .forEach(b =>
-      b.classList.remove("active")
-    );
-
-  const targetSection =
-    document.getElementById(sectionId);
-
-  if (targetSection) {
-    targetSection.classList.add("active-section");
-  }
-
-  const navBtn =
-    document.querySelector(
-      `.nav-item[data-section="${sectionId}"]`
-    );
-
-  if (navBtn) {
-    navBtn.classList.add("active");
-  }
-
-  document
-    .getElementById("sidebar")
-    ?.classList.remove("open");
-
-  if (sectionId === "dashboard") {
-    renderDashboard();
-  }
-
-  if (sectionId === "solicitacoes") {
-    renderRequests();
-  }
-
-  if (sectionId === "veiculos") {
-    renderVehicles();
-  }
-
-  if (sectionId === "rotas") {
-    renderRoutes();
-  }
-
-  if (sectionId === "clientes") {
-    renderClients();
-  }
-}
-
-/* ============================================================
-   FORMULÁRIO
-   ============================================================ */
+// ============================================================
+// HTML DO FORMULÁRIO
+// ============================================================
 
 function buildFormHTML(formId) {
   return `
     <form id="${formId}" class="simplified-form">
 
+      <!-- 1 -->
       <div class="form-group-block">
+
         <span class="form-block-title">
           1. Dados do Solicitante
         </span>
@@ -366,15 +310,19 @@ function buildFormHTML(formId) {
             class="big-input phone-mask"
           >
         </label>
+
       </div>
 
+      <!-- 2 -->
       <div class="form-group-block">
+
         <span class="form-block-title">
           2. Tipo de Localidade
         </span>
 
         <label class="form-label">
           Selecione o tipo de local para a coleta *
+
           <select
             name="type"
             required
@@ -399,33 +347,74 @@ function buildFormHTML(formId) {
             <option value="Outro">
               Outro
             </option>
+
           </select>
         </label>
 
         <div class="custom-location-wrap hidden">
+
           <label class="form-label">
             Nome do Estabelecimento / Local / Evento *
+
             <input
               name="customLocationName"
               placeholder="Informe o nome da empresa ou local"
               class="big-input"
             >
+
           </label>
+
         </div>
+
       </div>
 
+      <!-- 3 -->
       <div class="form-group-block">
+
         <span class="form-block-title">
           3. Localização Exata
         </span>
 
         <label class="form-label">
-          Selecione o ponto exato no mapa abaixo *
+          Encontre seu endereço no mapa
         </label>
 
+        <div
+          class="address-search-wrap"
+          style="
+            display:flex;
+            gap:8px;
+            margin-bottom:10px;
+            flex-wrap:wrap;
+          "
+        >
+
+          <input
+            type="text"
+            class="big-input address-search-input"
+            placeholder="Digite seu endereço, rua, número ou localidade..."
+            style="flex:1;min-width:220px;"
+            autocomplete="street-address"
+          >
+
+          <button
+            type="button"
+            class="secondary-btn address-search-btn"
+          >
+            🔍 Pesquisar
+          </button>
+
+        </div>
+
+        <div
+          class="address-search-results"
+          style="margin-bottom:10px;"
+        ></div>
+
         <p class="map-instruction">
-          Clique ou toque no mapa para definir a posição
-          onde os resíduos estarão disponíveis.
+          Você pode pesquisar seu endereço acima,
+          selecionar um resultado e confirmar.
+          Também pode clicar diretamente no mapa.
         </p>
 
         <button
@@ -440,11 +429,44 @@ function buildFormHTML(formId) {
           id="map-${formId}"
         ></div>
 
+        <div
+          class="selected-address-box"
+          style="
+            margin-top:12px;
+            padding:12px;
+            border-radius:8px;
+            background:#f5f5f5;
+            display:none;
+          "
+        >
+
+          <strong>
+            📍 Endereço selecionado
+          </strong>
+
+          <div
+            class="selected-address-text"
+            style="margin-top:6px;"
+          ></div>
+
+          <button
+            type="button"
+            class="primary-btn confirm-address-btn"
+            style="margin-top:10px;"
+          >
+            ✓ CONFIRMAR ESTE ENDEREÇO
+          </button>
+
+        </div>
+
         <div class="coords-display">
-          <span>Coordenadas Geográficas:</span>
+
+          <span>
+            Coordenadas Geográficas:
+          </span>
 
           <strong class="coords-text">
-            Nenhum ponto marcado no mapa
+            Nenhum ponto confirmado
           </strong>
 
           <input
@@ -458,10 +480,14 @@ function buildFormHTML(formId) {
             name="longitude"
             required
           >
+
         </div>
+
       </div>
 
+      <!-- 4 -->
       <div class="form-group-block">
+
         <span class="form-block-title">
           4. Resíduos para Coleta
         </span>
@@ -471,6 +497,7 @@ function buildFormHTML(formId) {
         </label>
 
         <div class="materials-grid">
+
           <label class="material-checkbox">
             <input
               type="checkbox"
@@ -526,14 +553,18 @@ function buildFormHTML(formId) {
           </label>
 
           <label class="material-checkbox">
+
             <input
               type="checkbox"
               name="materials_list"
               id="otherMaterialCheckbox"
               value="Outros"
             >
+
             Outros
+
           </label>
+
         </div>
 
         <div
@@ -541,22 +572,31 @@ function buildFormHTML(formId) {
           class="hidden"
           style="margin-top:12px;"
         >
+
           <label class="form-label">
+
             Qual resíduo? Especificar: *
+
             <input
               name="otherMaterialText"
               id="otherMaterialText"
               placeholder="Ex: Óleo de cozinha usado, Baterias..."
               class="big-input"
             >
+
           </label>
+
         </div>
+
       </div>
 
+      <!-- 5 -->
       <div class="form-group-block row-group">
 
         <label class="form-label flex-1">
+
           Quantidade Estimada *
+
           <input
             name="quantity"
             type="number"
@@ -566,15 +606,19 @@ function buildFormHTML(formId) {
             placeholder="Ex: 50"
             class="big-input"
           >
+
         </label>
 
         <label class="form-label flex-1">
+
           Unidade de Medida *
+
           <select
             name="unit"
             required
             class="big-select"
           >
+
             <option value="Kg">
               Kg (Quilogramas)
             </option>
@@ -594,11 +638,14 @@ function buildFormHTML(formId) {
             <option value="Bombonas">
               Bombonas
             </option>
+
           </select>
+
         </label>
 
       </div>
 
+      <!-- 6 -->
       <div class="form-group-block">
 
         <span class="form-block-title">
@@ -606,6 +653,7 @@ function buildFormHTML(formId) {
         </span>
 
         <label class="form-label">
+
           Com que frequência a coleta deve acontecer? *
 
           <select
@@ -614,6 +662,7 @@ function buildFormHTML(formId) {
             required
             class="big-select"
           >
+
             <option value="">
               Selecione a periodicidade...
             </option>
@@ -637,51 +686,98 @@ function buildFormHTML(formId) {
             <option value="Mensal">
               Uma vez no mês (Mensal)
             </option>
+
           </select>
+
         </label>
 
         <div
           id="singleDateWrap"
           class="hidden frequency-subwrap"
         >
+
           <label class="form-label">
+
             Data Preferencial para Coleta *
+
             <input
               type="date"
               name="preferred_date"
               id="preferredDateInput"
               class="big-input"
             >
+
           </label>
+
         </div>
 
         <div
           id="weeklyDaysWrap"
           class="hidden frequency-subwrap"
         >
+
           <label class="form-label">
             Dia(s) preferencial(is) da semana para coleta *
           </label>
 
           <div class="days-grid">
-            ${[
-              ["Segunda-feira", "Seg"],
-              ["Terça-feira", "Ter"],
-              ["Quarta-feira", "Quar"],
-              ["Quinta-feira", "Quin"],
-              ["Sexta-feira", "Sex"],
-              ["Sábado", "Sáb"]
-            ].map(([value, label]) => `
-              <label class="day-checkbox">
-                <input
-                  type="checkbox"
-                  name="preferred_days"
-                  value="${value}"
-                >
-                ${label}
-              </label>
-            `).join("")}
+
+            <label class="day-checkbox">
+              <input
+                type="checkbox"
+                name="preferred_days"
+                value="Segunda-feira"
+              >
+              Seg
+            </label>
+
+            <label class="day-checkbox">
+              <input
+                type="checkbox"
+                name="preferred_days"
+                value="Terça-feira"
+              >
+              Ter
+            </label>
+
+            <label class="day-checkbox">
+              <input
+                type="checkbox"
+                name="preferred_days"
+                value="Quarta-feira"
+              >
+              Quar
+            </label>
+
+            <label class="day-checkbox">
+              <input
+                type="checkbox"
+                name="preferred_days"
+                value="Quinta-feira"
+              >
+              Quin
+            </label>
+
+            <label class="day-checkbox">
+              <input
+                type="checkbox"
+                name="preferred_days"
+                value="Sexta-feira"
+              >
+              Sex
+            </label>
+
+            <label class="day-checkbox">
+              <input
+                type="checkbox"
+                name="preferred_days"
+                value="Sábado"
+              >
+              Sáb
+            </label>
+
           </div>
+
         </div>
 
         <div
@@ -690,6 +786,7 @@ function buildFormHTML(formId) {
         >
 
           <label class="form-label flex-1">
+
             Qual semana do mês? *
 
             <select
@@ -697,6 +794,7 @@ function buildFormHTML(formId) {
               id="monthlyWeekSelect"
               class="big-select"
             >
+
               <option value="1ª Semana">
                 1ª Semana do mês
               </option>
@@ -712,10 +810,13 @@ function buildFormHTML(formId) {
               <option value="4ª Semana">
                 4ª Semana do mês
               </option>
+
             </select>
+
           </label>
 
           <label class="form-label flex-1">
+
             Em qual dia da semana? *
 
             <select
@@ -723,6 +824,7 @@ function buildFormHTML(formId) {
               id="monthlyDaySelect"
               class="big-select"
             >
+
               <option value="Segunda-feira">
                 Segunda-feira
               </option>
@@ -746,12 +848,16 @@ function buildFormHTML(formId) {
               <option value="Sábado">
                 Sábado
               </option>
+
             </select>
+
           </label>
 
         </div>
+
       </div>
 
+      <!-- 7 -->
       <div class="form-group-block">
 
         <span class="form-block-title">
@@ -759,7 +865,9 @@ function buildFormHTML(formId) {
         </span>
 
         <label class="form-label">
-          Ponto de Referência ou Informações Adicionais (Opcional)
+
+          Ponto de Referência ou Informações Adicionais
+          (Opcional)
 
           <textarea
             name="notes"
@@ -767,6 +875,7 @@ function buildFormHTML(formId) {
             placeholder="Exemplo: Material armazenado ao lado da entrada secundária."
             class="big-textarea"
           ></textarea>
+
         </label>
 
       </div>
@@ -782,25 +891,53 @@ function buildFormHTML(formId) {
   `;
 }
 
-/* ============================================================
-   EVENTOS DO FORMULÁRIO
-   ============================================================ */
+// ============================================================
+// FORMATAÇÃO DO TELEFONE
+// ============================================================
+
+function formatPhone(value) {
+  const digits =
+    value.replace(/\D/g, "").slice(0, 11);
+
+  if (digits.length <= 2) {
+    return digits ? `(${digits}` : "";
+  }
+
+  if (digits.length <= 7) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  }
+
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+// ============================================================
+// EVENTOS DO FORMULÁRIO
+// ============================================================
 
 function initFormEvents(formId) {
-  const form = document.getElementById(formId);
+
+  const form =
+    document.getElementById(formId);
 
   if (!form) return;
 
+  // TELEFONE
   const phoneInput =
     form.querySelector(".phone-mask");
 
   if (phoneInput) {
-    phoneInput.addEventListener("input", e => {
-      e.target.value =
-        formatPhone(e.target.value);
-    });
+
+    phoneInput.addEventListener(
+      "input",
+      e => {
+        e.target.value =
+          formatPhone(e.target.value);
+      }
+    );
+
   }
 
+  // TIPO DE LOCAL
   const typeSelect =
     form.querySelector(".type-select");
 
@@ -808,33 +945,44 @@ function initFormEvents(formId) {
     form.querySelector(".custom-location-wrap");
 
   const customInput =
-    customWrap?.querySelector("input");
+    customWrap
+      ? customWrap.querySelector("input")
+      : null;
 
   if (typeSelect && customWrap) {
-    typeSelect.addEventListener("change", () => {
 
-      if (
-        typeSelect.value &&
-        typeSelect.value !== "Residência"
-      ) {
-        customWrap.classList.remove("hidden");
+    typeSelect.addEventListener(
+      "change",
+      () => {
 
-        if (customInput) {
-          customInput.required = true;
+        if (
+          typeSelect.value &&
+          typeSelect.value !== "Residência"
+        ) {
+
+          customWrap.classList.remove("hidden");
+
+          if (customInput) {
+            customInput.required = true;
+          }
+
+        } else {
+
+          customWrap.classList.add("hidden");
+
+          if (customInput) {
+            customInput.required = false;
+            customInput.value = "";
+          }
+
         }
 
-      } else {
-
-        customWrap.classList.add("hidden");
-
-        if (customInput) {
-          customInput.required = false;
-          customInput.value = "";
-        }
       }
-    });
+    );
+
   }
 
+  // OUTROS MATERIAIS
   const otherCheckbox =
     form.querySelector("#otherMaterialCheckbox");
 
@@ -846,28 +994,35 @@ function initFormEvents(formId) {
 
   if (otherCheckbox && otherWrap) {
 
-    otherCheckbox.addEventListener("change", () => {
+    otherCheckbox.addEventListener(
+      "change",
+      () => {
 
-      if (otherCheckbox.checked) {
+        if (otherCheckbox.checked) {
 
-        otherWrap.classList.remove("hidden");
+          otherWrap.classList.remove("hidden");
 
-        if (otherInput) {
-          otherInput.required = true;
+          if (otherInput) {
+            otherInput.required = true;
+          }
+
+        } else {
+
+          otherWrap.classList.add("hidden");
+
+          if (otherInput) {
+            otherInput.required = false;
+            otherInput.value = "";
+          }
+
         }
 
-      } else {
-
-        otherWrap.classList.add("hidden");
-
-        if (otherInput) {
-          otherInput.required = false;
-          otherInput.value = "";
-        }
       }
-    });
+    );
+
   }
 
+  // FREQUÊNCIA
   const frequencySelect =
     form.querySelector("#frequencySelect");
 
@@ -887,9 +1042,7 @@ function initFormEvents(formId) {
 
     if (preferredDateInput) {
       preferredDateInput.min =
-        new Date()
-          .toISOString()
-          .split("T")[0];
+        dateToISO(new Date());
     }
 
     frequencySelect.addEventListener(
@@ -925,207 +1078,239 @@ function initFormEvents(formId) {
         } else if (val === "Mensal") {
 
           monthlyWrap?.classList.remove("hidden");
+
         }
+
       }
     );
+
   }
 
+  // MAPA
   initMap(formId);
 
-  form.addEventListener("submit", e => {
+  // SUBMIT
+  form.addEventListener(
+    "submit",
+    e => {
 
-    e.preventDefault();
+      e.preventDefault();
 
-    const lat =
-      form.querySelector(
-        'input[name="latitude"]'
-      )?.value;
+      const lat =
+        form.querySelector(
+          'input[name="latitude"]'
+        ).value;
 
-    const lng =
-      form.querySelector(
-        'input[name="longitude"]'
-      )?.value;
+      const lng =
+        form.querySelector(
+          'input[name="longitude"]'
+        ).value;
 
-    if (!lat || !lng) {
-      toast(
-        "Por favor, selecione o ponto de localização exato no mapa."
-      );
-      return;
-    }
+      if (!lat || !lng) {
 
-    let checkedMaterials =
-      [
-        ...form.querySelectorAll(
-          'input[name="materials_list"]:checked'
-        )
-      ].map(c => c.value);
-
-    if (!checkedMaterials.length) {
-      toast(
-        "Selecione ao menos um tipo de material para agendar a coleta."
-      );
-      return;
-    }
-
-    if (
-      otherCheckbox?.checked &&
-      otherInput?.value.trim()
-    ) {
-
-      checkedMaterials =
-        checkedMaterials.map(m =>
-          m === "Outros"
-            ? `Outros (${otherInput.value.trim()})`
-            : m
-        );
-    }
-
-    const formData =
-      new FormData(form);
-
-    const data =
-      Object.fromEntries(formData.entries());
-
-    const freqVal =
-      data.frequency;
-
-    let frequencyText =
-      freqVal;
-
-    if (freqVal === "Única") {
-
-      if (!data.preferred_date) {
         toast(
-          "Por favor, selecione a data preferencial para a coleta única."
+          "Confirme o ponto exato da coleta no mapa."
         );
+
         return;
       }
 
-      const formattedDate =
-        data.preferred_date
-          .split("-")
-          .reverse()
-          .join("/");
-
-      frequencyText =
-        `Única (${formattedDate})`;
-
-    } else if (
-      freqVal === "Semanal" ||
-      freqVal === "Quinzenal"
-    ) {
-
-      const selectedDays =
+      let checkedMaterials =
         [
           ...form.querySelectorAll(
-            'input[name="preferred_days"]:checked'
+            'input[name="materials_list"]:checked'
           )
-        ].map(d => d.value);
+        ].map(c => c.value);
 
-      if (!selectedDays.length) {
+      if (checkedMaterials.length === 0) {
+
         toast(
-          "Selecione ao menos um dia da semana para a coleta."
+          "Selecione ao menos um tipo de material para agendar a coleta."
         );
+
         return;
       }
 
-      frequencyText =
-        `${freqVal} (${selectedDays.join(", ")})`;
+      if (
+        otherCheckbox &&
+        otherCheckbox.checked &&
+        otherInput &&
+        otherInput.value.trim() !== ""
+      ) {
 
-    } else if (freqVal === "Mensal") {
+        checkedMaterials =
+          checkedMaterials.map(
+            m =>
+              m === "Outros"
+                ? `Outros (${otherInput.value.trim()})`
+                : m
+          );
 
-      frequencyText =
-        `Mensal (${data.monthly_week} - ${data.monthly_day})`;
+      }
+
+      const formData =
+        new FormData(form);
+
+      const data =
+        Object.fromEntries(
+          formData.entries()
+        );
+
+      const freqVal =
+        data.frequency;
+
+      let frequencyText =
+        freqVal;
+
+      if (freqVal === "Única") {
+
+        if (!data.preferred_date) {
+
+          toast(
+            "Selecione a data preferencial para a coleta."
+          );
+
+          return;
+        }
+
+        const formattedDate =
+          data.preferred_date
+            .split("-")
+            .reverse()
+            .join("/");
+
+        frequencyText =
+          `Única (${formattedDate})`;
+
+      } else if (
+        freqVal === "Semanal" ||
+        freqVal === "Quinzenal"
+      ) {
+
+        const selectedDays =
+          [
+            ...form.querySelectorAll(
+              'input[name="preferred_days"]:checked'
+            )
+          ].map(d => d.value);
+
+        if (selectedDays.length === 0) {
+
+          toast(
+            "Selecione ao menos um dia da semana."
+          );
+
+          return;
+        }
+
+        frequencyText =
+          `${freqVal} (${selectedDays.join(", ")})`;
+
+      } else if (freqVal === "Mensal") {
+
+        frequencyText =
+          `Mensal (${data.monthly_week} - ${data.monthly_day})`;
+      }
+
+      const request = {
+
+        id: nextId(),
+
+        name: data.name,
+
+        phone: data.phone,
+
+        type: data.type,
+
+        customLocationName:
+          data.type !== "Residência"
+            ? data.customLocationName
+            : "",
+
+        latitude: data.latitude,
+
+        longitude: data.longitude,
+
+        materials:
+          checkedMaterials.join(", "),
+
+        quantity: data.quantity,
+
+        unit: data.unit,
+
+        frequency: frequencyText,
+
+        notes: data.notes || "",
+
+        status: "NOVA",
+
+        createdAt:
+          new Date().toISOString()
+
+      };
+
+      requests.push(request);
+
+      save();
+
+      if (
+        document.body.classList.contains(
+          "public-mode"
+        )
+      ) {
+
+        form.innerHTML = `
+          <div class="success-screen">
+
+            <h2>
+              Solicitação Registrada com Sucesso
+            </h2>
+
+            <p>
+              O seu pedido foi protocolado sob o número:
+              <strong>${escapeHTML(request.id)}</strong>
+            </p>
+
+            <p>
+              A equipe da
+              <strong>Associação Sol Nascente</strong>
+              em parceria com a
+              <strong>Inciclo</strong>
+              e
+              <strong>Recicle+ Trairi</strong>
+              analisará a solicitação.
+            </p>
+
+            <button
+              class="primary-btn"
+              type="button"
+              onclick="window.location.reload()"
+            >
+              Registrar Nova Solicitação
+            </button>
+
+          </div>
+        `;
+
+      } else {
+
+        closeModal();
+
+        renderDashboard();
+
+        toast(
+          `Solicitação ${request.id} registrada com sucesso.`
+        );
+
+      }
+
     }
-
-    const request = {
-      id: nextId(),
-      name: data.name,
-      phone: data.phone,
-      type: data.type,
-
-      customLocationName:
-        data.type !== "Residência"
-          ? data.customLocationName
-          : "",
-
-      latitude: data.latitude,
-      longitude: data.longitude,
-
-      materials:
-        checkedMaterials.join(", "),
-
-      quantity: data.quantity,
-      unit: data.unit,
-      frequency: frequencyText,
-
-      notes:
-        data.notes || "",
-
-      status: "NOVA",
-
-      createdAt:
-        new Date().toISOString()
-    };
-
-    requests.push(request);
-    save();
-
-    if (
-      document.body.classList.contains(
-        "public-mode"
-      )
-    ) {
-
-      form.innerHTML = `
-        <div class="success-screen">
-
-          <h2>
-            Solicitação Registrada com Sucesso
-          </h2>
-
-          <p>
-            O seu pedido foi protocolado sob o número:
-            <strong>${escapeHTML(request.id)}</strong>
-          </p>
-
-          <p>
-            A equipe da
-            <strong>Associação Sol Nascente</strong>
-            em parceria com a
-            <strong>Inciclo</strong>
-            e
-            <strong>Recicle+ Trairi</strong>
-            analisará a solicitação e entrará em contato
-            para confirmação.
-          </p>
-
-          <button
-            class="primary-btn"
-            type="button"
-            onclick="window.location.reload()"
-          >
-            Registrar Nova Solicitação
-          </button>
-
-        </div>
-      `;
-
-    } else {
-
-      closeModal();
-      renderDashboard();
-
-      toast(
-        `Solicitação ${request.id} registrada com sucesso.`
-      );
-    }
-  });
+  );
 }
 
-/* ============================================================
-   MAPA
-   ============================================================ */
+// ============================================================
+// MAPA + PESQUISA DE ENDEREÇO
+// ============================================================
 
 function initMap(formId) {
 
@@ -1136,39 +1321,43 @@ function initMap(formId) {
 
   if (!mapElement) return;
 
-  const defaultLat =
-    ROUTING_CONFIG.depot.lat;
-
-  const defaultLng =
-    ROUTING_CONFIG.depot.lng;
+  const defaultLat = DEPOT.lat;
+  const defaultLng = DEPOT.lng;
 
   setTimeout(() => {
 
     if (typeof L === "undefined") {
+
       console.error(
         "A biblioteca Leaflet.js não foi carregada."
       );
+
       return;
     }
 
     const map =
-      L.map(mapElement).setView(
-        [defaultLat, defaultLng],
-        14
-      );
+      L.map(mapElement)
+       .setView(
+         [defaultLat, defaultLng],
+         14
+       );
 
     L.tileLayer(
       "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       {
         maxZoom: 19,
         attribution:
-          "© OpenStreetMap"
+          "© OpenStreetMap contributors"
       }
     ).addTo(map);
 
     map.invalidateSize();
 
     let marker = null;
+
+    let pendingLocation = null;
+
+    let confirmedLocation = null;
 
     const form =
       document.getElementById(formId);
@@ -1186,7 +1375,41 @@ function initMap(formId) {
         'input[name="longitude"]'
       );
 
-    function setLocation(lat, lng) {
+    const addressInput =
+      form.querySelector(
+        ".address-search-input"
+      );
+
+    const searchButton =
+      form.querySelector(
+        ".address-search-btn"
+      );
+
+    const resultsContainer =
+      form.querySelector(
+        ".address-search-results"
+      );
+
+    const selectedAddressBox =
+      form.querySelector(
+        ".selected-address-box"
+      );
+
+    const selectedAddressText =
+      form.querySelector(
+        ".selected-address-text"
+      );
+
+    const confirmButton =
+      form.querySelector(
+        ".confirm-address-btn"
+      );
+
+    function setMarker(
+      lat,
+      lng,
+      addressText = ""
+    ) {
 
       if (marker) {
         map.removeLayer(marker);
@@ -1196,28 +1419,108 @@ function initMap(formId) {
         L.marker([lat, lng])
           .addTo(map);
 
-      marker
-        .bindPopup(
-          "Ponto de Coleta Selecionado"
-        )
-        .openPopup();
+      marker.bindPopup(
+        addressText ||
+        "Ponto de coleta selecionado"
+      );
 
-      latInput.value =
-        lat.toFixed(6);
+      map.setView(
+        [lat, lng],
+        17
+      );
 
-      lngInput.value =
-        lng.toFixed(6);
+      pendingLocation = {
+        lat: Number(lat),
+        lng: Number(lng),
+        address:
+          addressText || ""
+      };
 
-      coordsText.textContent =
-        `Latitude: ${lat.toFixed(5)} | Longitude: ${lng.toFixed(5)}`;
+      if (selectedAddressBox) {
+        selectedAddressBox.style.display =
+          "block";
+      }
+
+      if (selectedAddressText) {
+        selectedAddressText.textContent =
+          addressText ||
+          `Latitude: ${Number(lat).toFixed(6)} | Longitude: ${Number(lng).toFixed(6)}`;
+      }
+
+      if (coordsText) {
+        coordsText.textContent =
+          "Ponto selecionado — confirme o endereço";
+      }
+
+      if (latInput) {
+        latInput.value = "";
+      }
+
+      if (lngInput) {
+        lngInput.value = "";
+      }
     }
 
-    map.on("click", e => {
-      setLocation(
-        e.latlng.lat,
-        e.latlng.lng
+    function confirmLocation() {
+
+      if (!pendingLocation) {
+
+        toast(
+          "Primeiro selecione um ponto no mapa."
+        );
+
+        return;
+      }
+
+      confirmedLocation =
+        pendingLocation;
+
+      latInput.value =
+        Number(
+          confirmedLocation.lat
+        ).toFixed(6);
+
+      lngInput.value =
+        Number(
+          confirmedLocation.lng
+        ).toFixed(6);
+
+      coordsText.textContent =
+        `Latitude: ${Number(confirmedLocation.lat).toFixed(5)} | Longitude: ${Number(confirmedLocation.lng).toFixed(5)}`;
+
+      if (selectedAddressText) {
+
+        selectedAddressText.innerHTML =
+          `<strong style="color:green;">
+            ✓ Localização confirmada
+          </strong><br>
+          ${escapeHTML(
+            confirmedLocation.address ||
+            "Ponto selecionado manualmente no mapa."
+          )}`;
+      }
+
+      toast(
+        "Endereço confirmado com sucesso."
       );
-    });
+    }
+
+    map.on(
+      "click",
+      e => {
+
+        setMarker(
+          e.latlng.lat,
+          e.latlng.lng,
+          "Ponto selecionado manualmente no mapa"
+        );
+
+      }
+    );
+
+    // ========================================================
+    // GEOLOCALIZAÇÃO DO USUÁRIO
+    // ========================================================
 
     const geoBtn =
       form.querySelector(".geo-btn");
@@ -1229,9 +1532,11 @@ function initMap(formId) {
         () => {
 
           if (!navigator.geolocation) {
+
             toast(
               "A geolocalização não é suportada por este navegador."
             );
+
             return;
           }
 
@@ -1253,44 +1558,256 @@ function initMap(formId) {
                 17
               );
 
-              setLocation(
+              setMarker(
                 lat,
-                lng
+                lng,
+                "Minha localização atual"
               );
 
               geoBtn.textContent =
-                "Localização Atualizada";
+                "Localização encontrada";
 
-              setTimeout(() => {
-                geoBtn.textContent =
-                  "Usar minha localização atual";
-              }, 3000);
+              setTimeout(
+                () => {
+                  geoBtn.textContent =
+                    "Usar minha localização atual";
+                },
+                3000
+              );
+
             },
 
             () => {
 
               toast(
-                "Não foi possível obter a localização exata automaticamente. Por favor, marque manualmente no mapa."
+                "Não foi possível obter sua localização. Marque manualmente no mapa."
               );
 
               geoBtn.textContent =
                 "Usar minha localização atual";
+
             },
 
             {
-              enableHighAccuracy: true
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 0
             }
+
           );
+
         }
       );
+
     }
+
+    // ========================================================
+    // PESQUISA DE ENDEREÇO
+    // ========================================================
+
+    async function searchAddress() {
+
+      const query =
+        addressInput.value.trim();
+
+      if (!query) {
+
+        toast(
+          "Digite um endereço para pesquisar."
+        );
+
+        return;
+      }
+
+      searchButton.disabled = true;
+
+      searchButton.textContent =
+        "Pesquisando...";
+
+      resultsContainer.innerHTML = `
+        <div style="
+          padding:10px;
+          color:#666;
+        ">
+          🔎 Procurando endereço...
+        </div>
+      `;
+
+      try {
+
+        const searchQuery =
+          query.toLowerCase().includes("brasil")
+            ? query
+            : `${query}, Trairi, Ceará, Brasil`;
+
+        const url =
+          `${NOMINATIM_URL}?format=jsonv2&addressdetails=1&limit=5&countrycodes=br&q=${encodeURIComponent(searchQuery)}`;
+
+        const response =
+          await fetch(
+            url,
+            {
+              headers: {
+                "Accept":
+                  "application/json"
+              }
+            }
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            "Falha na pesquisa."
+          );
+        }
+
+        const results =
+          await response.json();
+
+        if (!results.length) {
+
+          resultsContainer.innerHTML = `
+            <div style="
+              padding:10px;
+              border-radius:8px;
+              background:#fff3cd;
+            ">
+              Nenhum endereço encontrado.
+              Tente informar também o nome da rua,
+              número ou bairro.
+            </div>
+          `;
+
+          return;
+        }
+
+        resultsContainer.innerHTML =
+          results.map(
+            (result, index) => `
+
+              <button
+                type="button"
+                class="address-result-item"
+                data-index="${index}"
+                style="
+                  display:block;
+                  width:100%;
+                  text-align:left;
+                  padding:12px;
+                  margin-bottom:6px;
+                  border:1px solid #ddd;
+                  border-radius:8px;
+                  background:white;
+                  cursor:pointer;
+                "
+              >
+
+                📍
+                ${escapeHTML(
+                  result.display_name
+                )}
+
+              </button>
+
+            `
+          ).join("");
+
+        results.forEach(
+          (result, index) => {
+
+            const button =
+              resultsContainer.querySelector(
+                `[data-index="${index}"]`
+              );
+
+            button?.addEventListener(
+              "click",
+              () => {
+
+                const lat =
+                  Number(result.lat);
+
+                const lng =
+                  Number(result.lon);
+
+                setMarker(
+                  lat,
+                  lng,
+                  result.display_name
+                );
+
+                resultsContainer.innerHTML = `
+                  <div style="
+                    padding:10px;
+                    background:#eef8ee;
+                    border-radius:8px;
+                  ">
+                    ✓ Endereço localizado no mapa.
+                    Confira o marcador e confirme abaixo.
+                  </div>
+                `;
+
+              }
+            );
+
+          }
+        );
+
+      } catch (error) {
+
+        console.error(error);
+
+        resultsContainer.innerHTML = `
+          <div style="
+            padding:10px;
+            border-radius:8px;
+            background:#f8d7da;
+          ">
+            Não foi possível pesquisar o endereço agora.
+            Você ainda pode marcar o ponto diretamente no mapa.
+          </div>
+        `;
+
+      } finally {
+
+        searchButton.disabled = false;
+
+        searchButton.textContent =
+          "🔍 Pesquisar";
+
+      }
+    }
+
+    searchButton?.addEventListener(
+      "click",
+      searchAddress
+    );
+
+    addressInput?.addEventListener(
+      "keydown",
+      e => {
+
+        if (e.key === "Enter") {
+
+          e.preventDefault();
+
+          searchAddress();
+
+        }
+
+      }
+    );
+
+    confirmButton?.addEventListener(
+      "click",
+      confirmLocation
+    );
 
   }, 200);
 }
 
-/* ============================================================
-   MODAIS
-   ============================================================ */
+// ============================================================
+// MODAIS
+// ============================================================
 
 function openModal() {
 
@@ -1299,8 +1816,6 @@ function openModal() {
       "modalFormContainer"
     );
 
-  if (!container) return;
-
   container.innerHTML =
     buildFormHTML("modalForm");
 
@@ -1308,28 +1823,25 @@ function openModal() {
 
   document
     .getElementById("requestModal")
-    ?.classList.remove("hidden");
+    .classList.remove("hidden");
 }
 
 function closeModal() {
 
   document
     .getElementById("requestModal")
-    ?.classList.add("hidden");
+    .classList.add("hidden");
 
-  const container =
-    document.getElementById(
+  document
+    .getElementById(
       "modalFormContainer"
-    );
-
-  if (container) {
-    container.innerHTML = "";
-  }
+    )
+    .innerHTML = "";
 }
 
-/* ============================================================
-   LINK PÚBLICO
-   ============================================================ */
+// ============================================================
+// LINK PÚBLICO
+// ============================================================
 
 function copyPublicLink() {
 
@@ -1343,17 +1855,21 @@ function copyPublicLink() {
 
     navigator.clipboard
       .writeText(publicURL)
-      .then(() => {
-        toast(
-          "Link do formulário público copiado."
-        );
-      })
-      .catch(() => {
-        prompt(
-          "Copie o link do formulário público:",
-          publicURL
-        );
-      });
+      .then(
+        () => {
+          toast(
+            "Link do formulário público copiado."
+          );
+        }
+      )
+      .catch(
+        () => {
+          prompt(
+            "Copie o link do formulário público:",
+            publicURL
+          );
+        }
+      );
 
   } else {
 
@@ -1361,33 +1877,40 @@ function copyPublicLink() {
       "Copie o link do formulário público:",
       publicURL
     );
+
   }
 }
 
-/* ============================================================
-   TOAST
-   ============================================================ */
+// ============================================================
+// TOAST
+// ============================================================
 
 function toast(message) {
 
   const el =
     document.getElementById("toast");
 
-  if (!el) return;
+  if (!el) {
+    alert(message);
+    return;
+  }
 
   el.textContent =
     message;
 
   el.classList.add("show");
 
-  setTimeout(() => {
-    el.classList.remove("show");
-  }, 3500);
+  setTimeout(
+    () => {
+      el.classList.remove("show");
+    },
+    3500
+  );
 }
 
-/* ============================================================
-   DASHBOARD
-   ============================================================ */
+// ============================================================
+// DASHBOARD
+// ============================================================
 
 function renderDashboard() {
 
@@ -1397,49 +1920,34 @@ function renderDashboard() {
         r => r.status === s
       ).length;
 
-  const statNovas =
-    document.getElementById(
-      "statNovas"
-    );
+  document.getElementById(
+    "statNovas"
+  ).textContent =
+    count("NOVA");
 
-  const statAgendadas =
-    document.getElementById(
-      "statAgendadas"
-    );
+  document.getElementById(
+    "statAgendadas"
+  ).textContent =
+    count("AGENDADA");
 
-  const statEmRota =
-    document.getElementById(
-      "statEmRota"
-    );
+  document.getElementById(
+    "statEmRota"
+  ).textContent =
+    count("EM ROTA");
 
-  const statFinalizadas =
-    document.getElementById(
-      "statFinalizadas"
-    );
-
-  if (statNovas)
-    statNovas.textContent =
-      count("NOVA");
-
-  if (statAgendadas)
-    statAgendadas.textContent =
-      count("AGENDADA");
-
-  if (statEmRota)
-    statEmRota.textContent =
-      count("EM ROTA");
-
-  if (statFinalizadas)
-    statFinalizadas.textContent =
-      count("FINALIZADA") +
-      count("COLETADA");
+  document.getElementById(
+    "statFinalizadas"
+  ).textContent =
+    count("FINALIZADA") +
+    count("COLETADA");
 
   const recent =
     [...requests]
       .sort(
         (a, b) =>
-          new Date(b.createdAt) -
-          new Date(a.createdAt)
+          b.createdAt.localeCompare(
+            a.createdAt
+          )
       )
       .slice(0, 6);
 
@@ -1457,9 +1965,9 @@ function renderDashboard() {
   }
 }
 
-/* ============================================================
-   TABELA DE SOLICITAÇÕES
-   ============================================================ */
+// ============================================================
+// TABELA DE SOLICITAÇÕES
+// ============================================================
 
 function tableHTML(
   data,
@@ -1467,8 +1975,10 @@ function tableHTML(
 ) {
 
   if (!data.length) {
+
     return `
       <div class="empty-state">
+
         <h2>
           Nenhuma solicitação encontrada
         </h2>
@@ -1476,15 +1986,19 @@ function tableHTML(
         <p>
           Não há registros gravados no sistema.
         </p>
+
       </div>
     `;
   }
 
   return `
+
     <table>
 
       <thead>
+
         <tr>
+
           <th>Código</th>
           <th>Solicitante</th>
           <th>Local</th>
@@ -1499,11 +2013,13 @@ function tableHTML(
           }
 
         </tr>
+
       </thead>
 
       <tbody>
 
-        ${data.map(r => `
+        ${data.map(
+          r => `
 
           <tr>
 
@@ -1518,7 +2034,11 @@ function tableHTML(
               <a
                 href="javascript:void(0)"
                 onclick="openClientDetails('${escapeHTML(r.id)}')"
-                style="color:var(--navy);font-weight:bold;text-decoration:underline;"
+                style="
+                  color:var(--navy);
+                  font-weight:bold;
+                  text-decoration:underline;
+                "
               >
                 ${escapeHTML(r.name)}
               </a>
@@ -1526,8 +2046,7 @@ function tableHTML(
               <br>
 
               <small>
-                Tel:
-                ${escapeHTML(r.phone)}
+                Tel: ${escapeHTML(r.phone)}
               </small>
 
             </td>
@@ -1559,7 +2078,11 @@ function tableHTML(
                       <a
                         href="https://maps.google.com/?q=${r.latitude},${r.longitude}"
                         target="_blank"
-                        style="color:var(--orange);font-weight:bold;text-decoration:none;"
+                        style="
+                          color:var(--orange);
+                          font-weight:bold;
+                          text-decoration:none;
+                        "
                       >
                         Visualizar no Mapa
                       </a>
@@ -1579,20 +2102,32 @@ function tableHTML(
               <br>
 
               <small>
-                <strong>Total:</strong>
-                ${escapeHTML(r.quantity || "-")}
-                ${escapeHTML(r.unit || "")}
+
+                <strong>
+                  Total:
+                </strong>
+
+                ${escapeHTML(
+                  r.quantity || "-"
+                )}
+
+                ${escapeHTML(
+                  r.unit || ""
+                )}
+
               </small>
 
             </td>
 
             <td>
+
               <small>
                 ${escapeHTML(
                   r.frequency ||
                   "Não informada"
                 )}
               </small>
+
             </td>
 
             <td>
@@ -1603,6 +2138,7 @@ function tableHTML(
               withActions
 
                 ? `
+
                   <td>
 
                     <div
@@ -1628,17 +2164,12 @@ function tableHTML(
                             "FINALIZADA"
                           ]
                             .map(
-                              s => `
-                                <option
-                                  ${
-                                    s === r.status
-                                      ? "selected"
-                                      : ""
-                                  }
-                                >
-                                  ${s}
-                                </option>
-                              `
+                              s =>
+                                `<option ${
+                                  s === r.status
+                                    ? "selected"
+                                    : ""
+                                }>${s}</option>`
                             )
                             .join("")
                         }
@@ -1664,23 +2195,27 @@ function tableHTML(
                     </div>
 
                   </td>
+
                 `
+
                 : ""
             }
 
           </tr>
 
-        `).join("")}
+        `
+        ).join("")}
 
       </tbody>
 
     </table>
+
   `;
 }
 
-/* ============================================================
-   SOLICITAÇÕES
-   ============================================================ */
+// ============================================================
+// SOLICITAÇÕES
+// ============================================================
 
 function renderRequests() {
 
@@ -1696,9 +2231,7 @@ function renderRequests() {
 
   const query =
     searchInput
-      ? searchInput.value
-          .trim()
-          .toLowerCase()
+      ? searchInput.value.trim().toLowerCase()
       : "";
 
   const status =
@@ -1707,19 +2240,22 @@ function renderRequests() {
       : "";
 
   const filtered =
-    requests.filter(r => {
+    requests.filter(
+      r => {
 
-      const text =
-        `${r.id} ${r.name} ${r.phone} ${r.type} ${r.customLocationName} ${r.materials} ${r.frequency}`
-          .toLowerCase();
+        const text =
+          `${r.id} ${r.name} ${r.phone} ${r.type} ${r.customLocationName} ${r.materials} ${r.frequency}`
+            .toLowerCase();
 
-      return (
-        (!query ||
-          text.includes(query)) &&
-        (!status ||
-          r.status === status)
-      );
-    });
+        return (
+          (!query ||
+            text.includes(query)) &&
+          (!status ||
+            r.status === status)
+        );
+
+      }
+    );
 
   const table =
     document.getElementById(
@@ -1735,41 +2271,50 @@ function renderRequests() {
   }
 
   document
-    .querySelectorAll(".inline-status")
-    .forEach(select => {
+    .querySelectorAll(
+      ".inline-status"
+    )
+    .forEach(
+      select => {
 
-      select.addEventListener(
-        "change",
-        e => {
+        select.addEventListener(
+          "change",
+          e => {
 
-          const request =
-            requests.find(
-              r =>
-                r.id ===
-                e.target.dataset.id
-            );
+            const request =
+              requests.find(
+                r =>
+                  r.id ===
+                  e.target.dataset.id
+              );
 
-          if (!request) return;
+            if (request) {
 
-          request.status =
-            e.target.value;
+              request.status =
+                e.target.value;
 
-          save();
+              save();
 
-          renderRequests();
-          renderDashboard();
+              renderRequests();
 
-          toast(
-            "Status atualizado com sucesso."
-          );
-        }
-      );
-    });
+              renderDashboard();
+
+              toast(
+                "Status atualizado com sucesso."
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
 }
 
-/* ============================================================
-   VEÍCULOS
-   ============================================================ */
+// ============================================================
+// VEÍCULOS
+// ============================================================
 
 function renderVehicles() {
 
@@ -1807,20 +2352,23 @@ function renderVehicles() {
       <thead>
 
         <tr>
+
           <th>Identificador</th>
           <th>Nome / Modelo</th>
           <th>Placa</th>
-          <th>Capacidade Volumétrica</th>
-          <th>Capacidade de Peso</th>
+          <th>Capacidade Máx.</th>
+          <th>Capacidade Kg</th>
           <th>Volume Mín. de Saída</th>
           <th>Ação</th>
+
         </tr>
 
       </thead>
 
       <tbody>
 
-        ${vehicles.map(v => `
+        ${vehicles.map(
+          v => `
 
           <tr>
 
@@ -1840,35 +2388,27 @@ function renderVehicles() {
 
             <td>
               <strong>
-                ${formatNumber(v.capacityLiters)}
-                L
+                ${escapeHTML(
+                  v.capacityLiters
+                )} Litros
               </strong>
             </td>
 
             <td>
-
               ${
-                v.capacityKg !== null &&
-                v.capacityKg !== undefined &&
-                v.capacityKg !== ""
-                  ? `
-                    <strong>
-                      ${formatNumber(v.capacityKg)}
-                      kg
-                    </strong>
-                  `
-                  : `
-                    <span style="color:var(--muted);">
-                      Não informado
-                    </span>
-                  `
+                v.capacityKg
+                  ? `${escapeHTML(
+                      v.capacityKg
+                    )} kg`
+                  : "Não informado"
               }
-
             </td>
 
             <td>
-              ${formatNumber(v.minVolumeLiters)}
-              L
+              ${escapeHTML(
+                v.minVolumeLiters || 0
+              )}
+              Litros
             </td>
 
             <td>
@@ -1884,11 +2424,13 @@ function renderVehicles() {
 
           </tr>
 
-        `).join("")}
+        `
+        ).join("")}
 
       </tbody>
 
     </table>
+
   `;
 }
 
@@ -1908,56 +2450,9 @@ function deleteVehicle(id) {
   );
 }
 
-/* ============================================================
-   CONVERSÃO DE VOLUME
-   ============================================================ */
-
-function getMaterialDensity(
-  materialsStr = ""
-) {
-
-  const mat =
-    materialsStr.toLowerCase();
-
-  if (
-    mat.includes("plástico") ||
-    mat.includes("plastico") ||
-    mat.includes("pet")
-  ) {
-    return 0.05;
-  }
-
-  if (
-    mat.includes("papelão") ||
-    mat.includes("papelao") ||
-    mat.includes("papel")
-  ) {
-    return 0.10;
-  }
-
-  if (
-    mat.includes("metal") ||
-    mat.includes("latas")
-  ) {
-    return 0.15;
-  }
-
-  if (
-    mat.includes("eletrônico") ||
-    mat.includes("eletronico")
-  ) {
-    return 0.25;
-  }
-
-  if (
-    mat.includes("vidro")
-  ) {
-    return 0.35;
-  }
-
-  // Estimativa genérica
-  return 0.15;
-}
+// ============================================================
+// CONVERSÃO PARA LITROS
+// ============================================================
 
 function convertToLiters(
   quantityStr,
@@ -1973,48 +2468,67 @@ function convertToLiters(
   const unit =
     (unitStr || "").toLowerCase();
 
-  if (
-    unit.includes("saco")
-  ) {
+  const mat =
+    (materialsStr || "").toLowerCase();
+
+  if (unit.includes("saco")) {
     return qty * 100;
   }
 
-  if (
-    unit.includes("bombona")
-  ) {
+  if (unit.includes("bombona")) {
     return qty * 200;
   }
 
-  if (
-    unit.includes("bigbag")
-  ) {
+  if (unit.includes("bigbag")) {
     return qty * 1000;
   }
 
-  if (
-    unit.includes("caixa")
-  ) {
+  if (unit.includes("caixa")) {
     return qty * 50;
   }
 
-  if (
-    unit.includes("kg")
-  ) {
+  if (unit.includes("kg")) {
 
-    const density =
-      getMaterialDensity(
-        materialsStr
-      );
+    let densityKgPerL = 0.15;
 
-    return qty / density;
+    if (
+      mat.includes("plástico") ||
+      mat.includes("pet")
+    ) {
+      densityKgPerL = 0.05;
+
+    } else if (
+      mat.includes("papel") ||
+      mat.includes("papelão")
+    ) {
+      densityKgPerL = 0.10;
+
+    } else if (
+      mat.includes("metal") ||
+      mat.includes("latas")
+    ) {
+      densityKgPerL = 0.15;
+
+    } else if (
+      mat.includes("eletrônicos")
+    ) {
+      densityKgPerL = 0.25;
+
+    } else if (
+      mat.includes("vidro")
+    ) {
+      densityKgPerL = 0.35;
+    }
+
+    return qty / densityKgPerL;
   }
 
   return qty;
 }
 
-/* ============================================================
-   ESTIMATIVA DE PESO
-   ============================================================ */
+// ============================================================
+// ESTIMATIVA DE PESO
+// ============================================================
 
 function estimateWeightKg(
   quantityStr,
@@ -2030,241 +2544,346 @@ function estimateWeightKg(
   const unit =
     (unitStr || "").toLowerCase();
 
-  /*
-   * Quando o solicitante informou diretamente em kg,
-   * não precisamos estimar.
-   */
-
   if (unit.includes("kg")) {
     return qty;
   }
 
   const liters =
     convertToLiters(
-      qty,
+      quantityStr,
       unitStr,
       materialsStr
     );
 
-  const density =
-    getMaterialDensity(
-      materialsStr
-    );
+  const mat =
+    (materialsStr || "").toLowerCase();
+
+  let density =
+    0.15;
+
+  if (
+    mat.includes("plástico") ||
+    mat.includes("pet")
+  ) {
+    density = 0.05;
+
+  } else if (
+    mat.includes("papel") ||
+    mat.includes("papelão")
+  ) {
+    density = 0.10;
+
+  } else if (
+    mat.includes("metal") ||
+    mat.includes("latas")
+  ) {
+    density = 0.15;
+
+  } else if (
+    mat.includes("eletrônicos")
+  ) {
+    density = 0.25;
+
+  } else if (
+    mat.includes("vidro")
+  ) {
+    density = 0.35;
+  }
 
   return liters * density;
 }
 
-/* ============================================================
-   DISTÂNCIA HAVERSINE
-   ============================================================ */
+// ============================================================
+// INTERPRETAÇÃO DE DIAS DA SEMANA
+// ============================================================
 
-function haversineKm(
-  lat1,
-  lon1,
-  lat2,
-  lon2
+const WEEKDAYS = [
+  "Domingo",
+  "Segunda-feira",
+  "Terça-feira",
+  "Quarta-feira",
+  "Quinta-feira",
+  "Sexta-feira",
+  "Sábado"
+];
+
+function getWeekdayName(date) {
+  return WEEKDAYS[
+    normalizeDate(date).getDay()
+  ];
+}
+
+// ============================================================
+// VERIFICA SE SOLICITAÇÃO DEVE SER COLETADA NA DATA
+// ============================================================
+
+function requestOccursOnDate(
+  request,
+  targetDate
 ) {
 
-  const R = 6371;
+  if (
+    !request ||
+    request.status === "FINALIZADA" ||
+    request.status === "COLETADA"
+  ) {
+    return false;
+  }
 
-  const dLat =
-    (lat2 - lat1) *
-    Math.PI / 180;
+  const date =
+    normalizeDate(targetDate);
 
-  const dLon =
-    (lon2 - lon1) *
-    Math.PI / 180;
+  const weekday =
+    getWeekdayName(date);
 
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) *
-    Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) ** 2;
+  const frequency =
+    request.frequency || "";
 
-  const c =
-    2 *
-    Math.atan2(
-      Math.sqrt(a),
-      Math.sqrt(1 - a)
-    );
-
-  return R * c;
-}
-
-/* ============================================================
-   NORMALIZAÇÃO DE COORDENADAS
-   ============================================================ */
-
-function getCoordinates(item) {
-
-  const lat =
-    parseFloat(item.latitude);
-
-  const lng =
-    parseFloat(item.longitude);
+  // ----------------------------------------------------------
+  // COLETA ÚNICA
+  // ----------------------------------------------------------
 
   if (
-    !Number.isFinite(lat) ||
-    !Number.isFinite(lng)
+    frequency.includes("Única")
   ) {
-    return null;
+
+    const match =
+      frequency.match(
+        /(\d{2}\/\d{2}\/\d{4})/
+      );
+
+    if (!match) {
+      return false;
+    }
+
+    const [day, month, year] =
+      match[1].split("/");
+
+    const requestedDate =
+      `${year}-${month}-${day}`;
+
+    return (
+      requestedDate ===
+      dateToISO(date)
+    );
   }
 
-  return {
-    lat,
-    lng
-  };
+  // ----------------------------------------------------------
+  // DIÁRIA
+  // ----------------------------------------------------------
+
+  if (
+    frequency.includes("Diária")
+  ) {
+    return true;
+  }
+
+  // ----------------------------------------------------------
+  // SEMANAL
+  // ----------------------------------------------------------
+
+  if (
+    frequency.includes("Semanal")
+  ) {
+
+    return frequency.includes(
+      weekday
+    );
+  }
+
+  // ----------------------------------------------------------
+  // QUINZENAL
+  // ----------------------------------------------------------
+
+  if (
+    frequency.includes("Quinzenal")
+  ) {
+
+    if (!frequency.includes(weekday)) {
+      return false;
+    }
+
+    const created =
+      normalizeDate(
+        request.createdAt
+          ? new Date(request.createdAt)
+          : new Date()
+      );
+
+    const diff =
+      Math.floor(
+        (
+          date.getTime() -
+          created.getTime()
+        ) /
+        86400000
+      );
+
+    return diff >= 0 &&
+      diff % 14 === 0;
+  }
+
+  // ----------------------------------------------------------
+  // MENSAL
+  // ----------------------------------------------------------
+
+  if (
+    frequency.includes("Mensal")
+  ) {
+
+    const weekMatch =
+      frequency.match(
+        /([1-4])ª Semana/
+      );
+
+    if (!weekMatch) {
+      return false;
+    }
+
+    const desiredWeek =
+      Number(weekMatch[1]);
+
+    if (!frequency.includes(weekday)) {
+      return false;
+    }
+
+    const dayOfMonth =
+      date.getDate();
+
+    const weekOfMonth =
+      Math.ceil(
+        dayOfMonth / 7
+      );
+
+    return (
+      weekOfMonth ===
+      desiredWeek
+    );
+  }
+
+  return false;
 }
 
-/* ============================================================
-   DISTÂNCIA ENTRE DOIS PONTOS
-   ============================================================ */
+// ============================================================
+// SOLICITAÇÕES PROGRAMADAS PARA UMA DATA
+// ============================================================
 
-function pointDistanceKm(a, b) {
+function getRequestsForDate(
+  date
+) {
 
-  const ca =
-    getCoordinates(a);
-
-  const cb =
-    getCoordinates(b);
-
-  if (!ca || !cb) {
-    return Infinity;
-  }
-
-  return haversineKm(
-    ca.lat,
-    ca.lng,
-    cb.lat,
-    cb.lng
+  return requests.filter(
+    r =>
+      r.status === "AGENDADA" &&
+      requestOccursOnDate(
+        r,
+        date
+      )
   );
 }
 
-/* ============================================================
-   AGRUPAMENTO GEOGRÁFICO
-   ============================================================ */
+// ============================================================
+// AGRUPAMENTO GEOGRÁFICO
+// ============================================================
 
 function groupRequestsByProximity(
-  items
+  items,
+  radiusKm = 8
 ) {
-
-  const remaining =
-    [...items];
 
   const groups = [];
 
-  while (remaining.length) {
+  items.forEach(item => {
 
-    const seed =
-      remaining.shift();
+    const lat =
+      Number(item.latitude);
 
-    const group = [seed];
+    const lng =
+      Number(item.longitude);
 
-    let changed = true;
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng)
+    ) {
+      return;
+    }
 
-    while (
-      changed &&
-      remaining.length
+    let assignedGroup = null;
+
+    for (
+      const group of groups
     ) {
 
-      changed = false;
+      const distance =
+        distanceKm(
+          lat,
+          lng,
+          group.center.lat,
+          group.center.lng
+        );
 
-      for (
-        let i = remaining.length - 1;
-        i >= 0;
-        i--
+      if (
+        distance <= radiusKm
       ) {
 
-        const candidate =
-          remaining[i];
+        assignedGroup =
+          group;
 
-        const closeToGroup =
-          group.some(
-            point =>
-              pointDistanceKm(
-                candidate,
-                point
-              ) <=
-              ROUTING_CONFIG.clusterRadiusKm
-          );
-
-        if (closeToGroup) {
-
-          group.push(
-            candidate
-          );
-
-          remaining.splice(i, 1);
-
-          changed = true;
-        }
+        break;
       }
     }
 
-    groups.push(group);
-  }
+    if (!assignedGroup) {
+
+      assignedGroup = {
+        id:
+          `GROUP-${groups.length + 1}`,
+
+        center: {
+          lat,
+          lng
+        },
+
+        items: []
+      };
+
+      groups.push(
+        assignedGroup
+      );
+    }
+
+    assignedGroup.items.push(
+      item
+    );
+
+    const count =
+      assignedGroup.items.length;
+
+    assignedGroup.center.lat =
+      assignedGroup.items.reduce(
+        (sum, p) =>
+          sum + Number(p.latitude),
+        0
+      ) / count;
+
+    assignedGroup.center.lng =
+      assignedGroup.items.reduce(
+        (sum, p) =>
+          sum + Number(p.longitude),
+        0
+      ) / count;
+  });
 
   return groups;
 }
 
-/* ============================================================
-   SELEÇÃO DE VEÍCULO
-   ============================================================ */
+// ============================================================
+// SEQUÊNCIA PELO PONTO MAIS PRÓXIMO
+// ============================================================
 
-function selectVehicleForLoad(
-  volume,
-  weight,
-  availableVehicles
-) {
-
-  return (
-    [...availableVehicles]
-      .filter(vehicle => {
-
-        const capacityL =
-          Number(
-            vehicle.capacityLiters
-          ) || 0;
-
-        const capacityKg =
-          Number(
-            vehicle.capacityKg
-          );
-
-        const volumeFits =
-          volume <= capacityL;
-
-        const weightFits =
-          !Number.isFinite(
-            capacityKg
-          ) ||
-          capacityKg <= 0 ||
-          weight <= capacityKg;
-
-        return (
-          volumeFits &&
-          weightFits
-        );
-      })
-      .sort(
-        (a, b) =>
-          a.capacityLiters -
-          b.capacityLiters
-      )[0] || null
-  );
-}
-
-/* ============================================================
-   VIZINHO MAIS PRÓXIMO
-   ============================================================ */
-
-function nearestNeighbor(
+function nearestNeighborRoute(
   items
 ) {
-
-  if (!items.length) {
-    return [];
-  }
 
   const remaining =
     [...items];
@@ -2272,43 +2891,44 @@ function nearestNeighbor(
   const ordered = [];
 
   let current = {
-    latitude:
-      ROUTING_CONFIG.depot.lat,
-    longitude:
-      ROUTING_CONFIG.depot.lng
+    lat: DEPOT.lat,
+    lng: DEPOT.lng
   };
 
-  while (remaining.length) {
+  while (
+    remaining.length
+  ) {
 
-    let bestIndex = 0;
-    let bestDistance =
+    let nearestIndex = 0;
+    let nearestDistance =
       Infinity;
 
     remaining.forEach(
       (item, index) => {
 
-        const distance =
-          pointDistanceKm(
-            current,
-            item
+        const d =
+          distanceKm(
+            current.lat,
+            current.lng,
+            Number(item.latitude),
+            Number(item.longitude)
           );
 
         if (
-          distance <
-          bestDistance
+          d < nearestDistance
         ) {
-          bestDistance =
-            distance;
 
-          bestIndex =
-            index;
+          nearestDistance = d;
+
+          nearestIndex = index;
         }
+
       }
     );
 
     const selected =
       remaining.splice(
-        bestIndex,
+        nearestIndex,
         1
       )[0];
 
@@ -2316,17 +2936,27 @@ function nearestNeighbor(
       selected
     );
 
-    current = selected;
+    current = {
+      lat:
+        Number(
+          selected.latitude
+        ),
+
+      lng:
+        Number(
+          selected.longitude
+        )
+    };
   }
 
   return ordered;
 }
 
-/* ============================================================
-   2-OPT
-   ============================================================ */
+// ============================================================
+// 2-OPT
+// ============================================================
 
-function routeDistanceStraightLine(
+function routeDistance(
   route
 ) {
 
@@ -2336,33 +2966,35 @@ function routeDistanceStraightLine(
 
   let total = 0;
 
-  let previous = {
-    latitude:
-      ROUTING_CONFIG.depot.lat,
-    longitude:
-      ROUTING_CONFIG.depot.lng
-  };
+  let previous = DEPOT;
 
-  route.forEach(point => {
+  route.forEach(
+    point => {
 
-    total +=
-      pointDistanceKm(
-        previous,
-        point
-      );
+      total +=
+        distanceKm(
+          previous.lat,
+          previous.lng,
+          Number(point.latitude),
+          Number(point.longitude)
+        );
 
-    previous = point;
-  });
+      previous = {
+        lat:
+          Number(point.latitude),
+
+        lng:
+          Number(point.longitude)
+      };
+    }
+  );
 
   total +=
-    pointDistanceKm(
-      previous,
-      {
-        latitude:
-          ROUTING_CONFIG.depot.lat,
-        longitude:
-          ROUTING_CONFIG.depot.lng
-      }
+    distanceKm(
+      previous.lat,
+      previous.lng,
+      DEPOT.lat,
+      DEPOT.lng
     );
 
   return total;
@@ -2370,17 +3002,15 @@ function routeDistanceStraightLine(
 
 function twoOpt(route) {
 
-  if (route.length < 4) {
+  if (
+    !route ||
+    route.length < 4
+  ) {
     return route;
   }
 
   let best =
     [...route];
-
-  let bestDistance =
-    routeDistanceStraightLine(
-      best
-    );
 
   let improved = true;
 
@@ -2388,34 +3018,35 @@ function twoOpt(route) {
 
     improved = false;
 
+    let bestDistance =
+      routeDistance(best);
+
     for (
       let i = 0;
-      i < best.length - 1;
+      i < best.length - 2;
       i++
     ) {
 
       for (
-        let j = i + 1;
-        j < best.length;
-        j++
+        let k = i + 1;
+        k < best.length - 1;
+        k++
       ) {
 
         const candidate = [
           ...best.slice(0, i),
           ...best
-            .slice(i, j + 1)
+            .slice(i, k + 1)
             .reverse(),
-          ...best.slice(j + 1)
+          ...best.slice(k + 1)
         ];
 
         const candidateDistance =
-          routeDistanceStraightLine(
-            candidate
-          );
+          routeDistance(candidate);
 
         if (
           candidateDistance <
-          bestDistance - 0.001
+          bestDistance
         ) {
 
           best =
@@ -2426,6 +3057,7 @@ function twoOpt(route) {
 
           improved = true;
         }
+
       }
     }
   }
@@ -2433,613 +3065,168 @@ function twoOpt(route) {
   return best;
 }
 
-/* ============================================================
-   CÁLCULO DE ROTA VIA OSRM
-   ============================================================ */
+// ============================================================
+// CRIAÇÃO DE ROTAS
+// ============================================================
 
-async function calculateOSRMRoute(
-  orderedItems
+function generateRoutesForDate(
+  targetDate
 ) {
 
-  const coordinates = [
-    {
-      lat:
-        ROUTING_CONFIG.depot.lat,
-      lng:
-        ROUTING_CONFIG.depot.lng
-    },
+  const points =
+    getRequestsForDate(
+      targetDate
+    ).map(
+      r => ({
 
-    ...orderedItems
-      .map(item =>
-        getCoordinates(item)
-      )
-      .filter(Boolean),
+        ...r,
 
-    {
-      lat:
-        ROUTING_CONFIG.depot.lat,
-      lng:
-        ROUTING_CONFIG.depot.lng
-    }
-  ];
+        totalLiters:
+          convertToLiters(
+            r.quantity,
+            r.unit,
+            r.materials
+          ),
 
-  if (
-    coordinates.length < 2
+        estimatedKg:
+          estimateWeightKg(
+            r.quantity,
+            r.unit,
+            r.materials
+          )
+
+      })
+    );
+
+  if (!points.length) {
+    return [];
+  }
+
+  const sortedVehicles =
+    [...vehicles].sort(
+      (a, b) =>
+        Number(b.capacityLiters || 0) -
+        Number(a.capacityLiters || 0)
+    );
+
+  const unassigned =
+    [...points];
+
+  const routes = [];
+
+  while (
+    unassigned.length &&
+    sortedVehicles.length
   ) {
-    return null;
-  }
 
-  const coordinateString =
-    coordinates
-      .map(
-        c =>
-          `${c.lng},${c.lat}`
-      )
-      .join(";");
+    let selectedVehicle =
+      null;
 
-  const url =
-    `${ROUTING_CONFIG.osrmUrl}${coordinateString}?overview=false&steps=false`;
+    let selectedItems =
+      [];
 
-  try {
-
-    const response =
-      await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(
-        `OSRM HTTP ${response.status}`
-      );
-    }
-
-    const data =
-      await response.json();
-
-    if (
-      data.code !== "Ok" ||
-      !data.routes?.length
-    ) {
-      throw new Error(
-        "OSRM não retornou rota."
-      );
-    }
-
-    const route =
-      data.routes[0];
-
-    return {
-      distanceKm:
-        route.distance / 1000,
-
-      durationMinutes:
-        route.duration / 60,
-
-      source:
-        "OSRM"
-    };
-
-  } catch (error) {
-
-    console.warn(
-      "OSRM indisponível. Utilizando fallback.",
-      error
-    );
-
-    return null;
-  }
-}
-
-/* ============================================================
-   FALLBACK DE ROTA
-   ============================================================ */
-
-function calculateFallbackRoute(
-  orderedItems
-) {
-
-  const distanceKm =
-    routeDistanceStraightLine(
-      orderedItems
-    ) * 1.25;
-
-  const drivingMinutes =
-    distanceKm /
-    ROUTING_CONFIG.averageSpeedKmH *
-    60;
-
-  const serviceMinutes =
-    orderedItems.length *
-    ROUTING_CONFIG.serviceMinutesPerStop;
-
-  return {
-    distanceKm,
-    durationMinutes:
-      drivingMinutes +
-      serviceMinutes,
-    source:
-      "Estimativa"
-  };
-}
-
-/* ============================================================
-   DISTRIBUIÇÃO DAS CARGAS
-   ============================================================ */
-
-function prepareRouteItems(
-  items
-) {
-
-  return items.map(item => {
-
-    const totalLiters =
-      convertToLiters(
-        item.quantity,
-        item.unit,
-        item.materials
-      );
-
-    const totalWeightKg =
-      estimateWeightKg(
-        item.quantity,
-        item.unit,
-        item.materials
-      );
-
-    return {
-      ...item,
-
-      totalLiters,
-      totalWeightKg,
-
-      remainingLiters:
-        totalLiters,
-
-      remainingWeightKg:
-        totalWeightKg
-    };
-  });
-}
-
-/* ============================================================
-   CRIAÇÃO DOS GRUPOS DE CARGA
-   ============================================================ */
-
-function createVehicleTrips(
-  items,
-  vehicle
-) {
-
-  const trips = [];
-
-  let currentTrip = {
-    tripNumber: 1,
-    items: [],
-    usedLiters: 0,
-    usedKg: 0
-  };
-
-  const capacityLiters =
-    Number(
-      vehicle.capacityLiters
-    ) || 0;
-
-  const capacityKg =
-    Number(
-      vehicle.capacityKg
-    );
-
-  items.forEach(item => {
-
-    while (
-      item.remainingLiters > 0.001
+    for (
+      const vehicle of sortedVehicles
     ) {
 
-      const spaceLiters =
-        capacityLiters -
-        currentTrip.usedLiters;
+      const capacityLiters =
+        Number(
+          vehicle.capacityLiters
+        ) || 0;
 
-      let spaceKg =
-        Infinity;
+      const capacityKg =
+        Number(
+          vehicle.capacityKg
+        ) || Infinity;
 
-      if (
-        Number.isFinite(capacityKg) &&
-        capacityKg > 0
-      ) {
-
-        spaceKg =
-          capacityKg -
-          currentTrip.usedKg;
-      }
+      const minVolume =
+        Number(
+          vehicle.minVolumeLiters
+        ) || 0;
 
       if (
-        spaceLiters <= 0.001 ||
-        spaceKg <= 0.001
+        capacityLiters <= 0
       ) {
-
-        if (
-          currentTrip.items.length
-        ) {
-          trips.push(
-            currentTrip
-          );
-        }
-
-        currentTrip = {
-          tripNumber:
-            trips.length + 1,
-
-          items: [],
-
-          usedLiters: 0,
-
-          usedKg: 0
-        };
-
         continue;
       }
 
-      /*
-       * Calcula quanto pode ser carregado
-       * considerando simultaneamente volume e peso.
-       */
+      const candidateItems = [];
 
-      let allocatedLiters =
-        Math.min(
-          item.remainingLiters,
-          spaceLiters
-        );
+      let usedLiters = 0;
+      let usedKg = 0;
 
-      let allocatedKg =
-        item.totalLiters > 0
-          ? item.totalWeightKg *
-            (
-              allocatedLiters /
-              item.totalLiters
-            )
-          : 0;
-
-      if (
-        Number.isFinite(spaceKg) &&
-        allocatedKg > spaceKg &&
-        item.totalWeightKg > 0
-      ) {
-
-        allocatedKg =
-          spaceKg;
-
-        allocatedLiters =
-          item.totalWeightKg > 0
-            ? allocatedKg /
-              (
-                item.totalWeightKg /
-                item.totalLiters
-              )
-            : 0;
-      }
-
-      if (
-        allocatedLiters <= 0.001
-      ) {
-        break;
-      }
-
-      const allocation = {
-        ...item,
-
-        allocatedLiters,
-
-        allocatedWeightKg:
-          allocatedKg,
-
-        isPartial:
-          allocatedLiters <
-          item.totalLiters - 0.001
-      };
-
-      currentTrip.items.push(
-        allocation
-      );
-
-      currentTrip.usedLiters +=
-        allocatedLiters;
-
-      currentTrip.usedKg +=
-        allocatedKg;
-
-      item.remainingLiters -=
-        allocatedLiters;
-
-      item.remainingWeightKg -=
-        allocatedKg;
-
-      if (
-        currentTrip.usedLiters >=
-          capacityLiters - 0.001 ||
-        (
-          Number.isFinite(capacityKg) &&
-          capacityKg > 0 &&
-          currentTrip.usedKg >=
-            capacityKg - 0.001
-        )
-      ) {
-
-        trips.push(
-          currentTrip
-        );
-
-        currentTrip = {
-          tripNumber:
-            trips.length + 1,
-
-          items: [],
-
-          usedLiters: 0,
-
-          usedKg: 0
-        };
-      }
-    }
-  });
-
-  if (
-    currentTrip.items.length
-  ) {
-    trips.push(
-      currentTrip
-    );
-  }
-
-  return trips;
-}
-
-/* ============================================================
-   GERAÇÃO DE UMA ROTA
-   ============================================================ */
-
-async function buildTripRoute(
-  trip
-) {
-
-  const uniqueItems = [];
-
-  const seen = new Set();
-
-  trip.items.forEach(item => {
-
-    /*
-     * Caso uma solicitação tenha sido
-     * fracionada, cada parada continua
-     * sendo identificada pelo ID.
-     */
-
-    const key =
-      `${item.id}-${Math.round(item.allocatedLiters)}`;
-
-    if (!seen.has(key)) {
-
-      seen.add(key);
-
-      uniqueItems.push(
-        item
-      );
-    }
-  });
-
-  const nearest =
-    nearestNeighbor(
-      uniqueItems
-    );
-
-  const optimized =
-    twoOpt(nearest);
-
-  let routeInfo =
-    await calculateOSRMRoute(
-      optimized
-    );
-
-  if (!routeInfo) {
-
-    routeInfo =
-      calculateFallbackRoute(
-        optimized
-      );
-  }
-
-  return {
-    ...trip,
-
-    orderedItems:
-      optimized,
-
-    distanceKm:
-      routeInfo.distanceKm,
-
-    durationMinutes:
-      routeInfo.durationMinutes,
-
-    routingSource:
-      routeInfo.source
-  };
-}
-
-/* ============================================================
-   GERAÇÃO COMPLETA DO PLANO
-   ============================================================ */
-
-async function generateRoutes() {
-
-  const today =
-    new Date();
-
-  const todayPoints =
-    requests.filter(
-      request =>
-        request.status ===
-          "AGENDADA" &&
-        requestIsScheduledToday(
-          request,
-          today
-        )
-    );
-
-  if (!todayPoints.length) {
-    return {
-      routes: [],
-      unassigned: []
-    };
-  }
-
-  const prepared =
-    prepareRouteItems(
-      todayPoints
-    );
-
-  /*
-   * Primeiro identifica solicitações
-   * que não cabem em nenhum veículo.
-   */
-
-  const unassigned = [];
-
-  const assignable = [];
-
-  prepared.forEach(item => {
-
-    const vehicle =
-      selectVehicleForLoad(
-        item.totalLiters,
-        item.totalWeightKg,
-        vehicles
-      );
-
-    if (!vehicle) {
-
-      unassigned.push(
-        item
-      );
-
-    } else {
-
-      assignable.push(
-        item
-      );
-    }
-  });
-
-  /*
-   * Agrupamento geográfico.
-   */
-
-  const geographicGroups =
-    groupRequestsByProximity(
-      assignable
-    );
-
-  const generatedRoutes = [];
-
-  /*
-   * Dentro de cada grupo geográfico,
-   * organiza as solicitações por proximidade.
-   */
-
-  for (
-    const group of geographicGroups
-  ) {
-
-    const orderedGroup =
-      nearestNeighbor(
-        group
-      );
-
-    /*
-     * Tenta usar o menor veículo capaz
-     * de atender cada carga.
-     */
-
-    let remaining =
-      [...orderedGroup];
-
-    while (remaining.length) {
-
-      let vehicle =
-        null;
-
-      let selectedItems = [];
-
-      /*
-       * Prioriza o menor veículo
-       * capaz de levar pelo menos uma
-       * solicitação.
-       */
-
-      const candidateVehicles =
-        [...vehicles].sort(
-          (a, b) =>
-            a.capacityLiters -
-            b.capacityLiters
+      const nearbyOrdered =
+        nearestNeighborRoute(
+          unassigned
         );
 
       for (
-        const candidate of
-        candidateVehicles
+        const item of nearbyOrdered
       ) {
 
-        const capacityL =
+        if (
+          candidateItems.some(
+            x => x.id === item.id
+          )
+        ) {
+          continue;
+        }
+
+        const itemLiters =
           Number(
-            candidate.capacityLiters
+            item.totalLiters
           ) || 0;
 
-        const capacityKg =
+        const itemKg =
           Number(
-            candidate.capacityKg
-          );
+            item.estimatedKg
+          ) || 0;
 
-        let usedL = 0;
-        let usedKg = 0;
-
-        const candidateItems = [];
-
-        for (
-          const item of remaining
+        if (
+          itemLiters >
+          capacityLiters
         ) {
-
-          if (
-            usedL +
-              item.totalLiters >
-            capacityL
-          ) {
-            continue;
-          }
-
-          if (
-            Number.isFinite(
-              capacityKg
-            ) &&
-            capacityKg > 0 &&
-            usedKg +
-              item.totalWeightKg >
-            capacityKg
-          ) {
-            continue;
-          }
-
-          candidateItems.push(
-            item
-          );
-
-          usedL +=
-            item.totalLiters;
-
-          usedKg +=
-            item.totalWeightKg;
+          continue;
         }
 
         if (
-          candidateItems.length
+          usedLiters +
+          itemLiters >
+          capacityLiters
+        ) {
+          continue;
+        }
+
+        if (
+          usedKg +
+          itemKg >
+          capacityKg
+        ) {
+          continue;
+        }
+
+        candidateItems.push(
+          item
+        );
+
+        usedLiters +=
+          itemLiters;
+
+        usedKg +=
+          itemKg;
+      }
+
+      if (
+        candidateItems.length
+      ) {
+
+        if (
+          usedLiters >= minVolume ||
+          minVolume === 0
         ) {
 
-          vehicle =
-            candidate;
+          selectedVehicle =
+            vehicle;
 
           selectedItems =
             candidateItems;
@@ -3047,308 +3234,315 @@ async function generateRoutes() {
           break;
         }
       }
+    }
 
-      /*
-       * Se nenhuma combinação completa couber,
-       * utiliza o maior veículo disponível
-       * para fracionamento.
-       */
+    if (
+      !selectedVehicle
+    ) {
 
-      if (!vehicle) {
+      break;
+    }
 
-        vehicle =
-          [...vehicles].sort(
-            (a, b) =>
-              b.capacityLiters -
-              a.capacityLiters
-          )[0];
+    const ordered =
+      twoOpt(
+        selectedItems
+      );
 
-        if (!vehicle) {
-          unassigned.push(
-            ...remaining
+    const distance =
+      routeDistance(
+        ordered
+      );
+
+    const usedLiters =
+      ordered.reduce(
+        (sum, item) =>
+          sum +
+          Number(
+            item.totalLiters
+          ),
+        0
+      );
+
+    const usedKg =
+      ordered.reduce(
+        (sum, item) =>
+          sum +
+          Number(
+            item.estimatedKg
+          ),
+        0
+      );
+
+    const capacityLiters =
+      Number(
+        selectedVehicle.capacityLiters
+      ) || 0;
+
+    const capacityKg =
+      Number(
+        selectedVehicle.capacityKg
+      ) || 0;
+
+    const estimatedTimeMinutes =
+      Math.max(
+        20,
+        Math.round(
+          (distance / 30) * 60 +
+          ordered.length * 10
+        )
+      );
+
+    const route = {
+
+      id:
+        nextRouteId(),
+
+      date:
+        dateToISO(
+          targetDate
+        ),
+
+      vehicleId:
+        selectedVehicle.id,
+
+      vehicleName:
+        selectedVehicle.name,
+
+      vehiclePlate:
+        selectedVehicle.plate,
+
+      stops:
+        ordered.map(
+          (item, index) => ({
+
+            order:
+              index + 1,
+
+            requestId:
+              item.id,
+
+            name:
+              item.name,
+
+            latitude:
+              Number(item.latitude),
+
+            longitude:
+              Number(item.longitude),
+
+            liters:
+              Math.round(
+                item.totalLiters
+              ),
+
+            estimatedKg:
+              Math.round(
+                item.estimatedKg
+              )
+
+          })
+        ),
+
+      totalLiters:
+        Math.round(
+          usedLiters
+        ),
+
+      totalKg:
+        Math.round(
+          usedKg
+        ),
+
+      capacityLiters,
+
+      capacityKg,
+
+      occupancyPercent:
+        capacityLiters
+          ? Math.min(
+              100,
+              Math.round(
+                (
+                  usedLiters /
+                  capacityLiters
+                ) * 100
+              )
+            )
+          : 0,
+
+      weightOccupancyPercent:
+        capacityKg
+          ? Math.min(
+              100,
+              Math.round(
+                (
+                  usedKg /
+                  capacityKg
+                ) * 100
+              )
+            )
+          : 0,
+
+      distanceKm:
+        Number(
+          distance.toFixed(2)
+        ),
+
+      estimatedMinutes:
+        estimatedTimeMinutes,
+
+      status:
+        "PLANEJADA",
+
+      createdAt:
+        new Date().toISOString()
+
+    };
+
+    routes.push(
+      route
+    );
+
+    selectedItems.forEach(
+      item => {
+
+        const index =
+          unassigned.findIndex(
+            r =>
+              r.id ===
+              item.id
           );
-          break;
+
+        if (index >= 0) {
+          unassigned.splice(
+            index,
+            1
+          );
         }
 
-        selectedItems =
-          [remaining[0]];
       }
-
-      const workingItems =
-        prepareRouteItems(
-          selectedItems
-        );
-
-      const trips =
-        createVehicleTrips(
-          workingItems,
-          vehicle
-        );
-
-      for (
-        const trip of trips
-      ) {
-
-        const route =
-          await buildTripRoute(
-            trip
-          );
-
-        generatedRoutes.push({
-          id:
-            nextRouteId(),
-
-          createdAt:
-            new Date().toISOString(),
-
-          date:
-            today.toISOString()
-              .split("T")[0],
-
-          status:
-            "PLANEJADA",
-
-          vehicleId:
-            vehicle.id,
-
-          vehicleName:
-            vehicle.name,
-
-          vehiclePlate:
-            vehicle.plate,
-
-          capacityLiters:
-            Number(
-              vehicle.capacityLiters
-            ) || 0,
-
-          capacityKg:
-            Number(
-              vehicle.capacityKg
-            ) || null,
-
-          ...route
-        });
-      }
-
-      const selectedIds =
-        new Set(
-          selectedItems.map(
-            item => item.id
-          )
-        );
-
-      remaining =
-        remaining.filter(
-          item =>
-            !selectedIds.has(
-              item.id
-            )
-        );
-    }
+    );
   }
 
   return {
-    routes:
-      generatedRoutes,
-
+    routes,
     unassigned
   };
 }
 
-/* ============================================================
-   VERIFICAÇÃO DE AGENDAMENTO
-   ============================================================ */
+// ============================================================
+// FORMATAÇÃO DE TEMPO
+// ============================================================
 
-function requestIsScheduledToday(
-  request,
-  date = new Date()
+function formatDuration(
+  minutes
 ) {
 
-  if (!request.frequency) {
-    return false;
-  }
-
-  const frequency =
-    request.frequency;
-
-  const dayNames = [
-    "Domingo",
-    "Segunda-feira",
-    "Terça-feira",
-    "Quarta-feira",
-    "Quinta-feira",
-    "Sexta-feira",
-    "Sábado"
-  ];
-
-  const currentDay =
-    dayNames[
-      date.getDay()
-    ];
-
-  const dateBR =
-    date.toLocaleDateString(
-      "pt-BR"
+  const h =
+    Math.floor(
+      minutes / 60
     );
 
-  /*
-   * Única
-   */
+  const m =
+    minutes % 60;
 
-  if (
-    frequency.includes("Única")
-  ) {
-
-    return frequency.includes(
-      dateBR
-    );
+  if (h > 0) {
+    return `${h}h ${m}min`;
   }
 
-  /*
-   * Diária
-   */
-
-  if (
-    frequency.includes("Diária")
-  ) {
-    return true;
-  }
-
-  /*
-   * Semanal
-   */
-
-  if (
-    frequency.includes("Semanal")
-  ) {
-
-    return frequency.includes(
-      currentDay
-    );
-  }
-
-  /*
-   * Quinzenal
-   *
-   * Como o cadastro atual guarda
-   * apenas os dias da semana, fazemos
-   * uma verificação aproximada de 14 dias.
-   */
-
-  if (
-    frequency.includes("Quinzenal")
-  ) {
-
-    const match =
-      frequency.match(
-        /\((.*?)\)/
-      );
-
-    if (!match) {
-      return false;
-    }
-
-    const days =
-      match[1]
-        .split(",")
-        .map(
-          d => d.trim()
-        );
-
-    if (
-      !days.includes(
-        currentDay
-      )
-    ) {
-      return false;
-    }
-
-    const dayOfYear =
-      getDayOfYear(date);
-
-    return (
-      Math.floor(
-        dayOfYear / 7
-      ) % 2 === 0
-    );
-  }
-
-  /*
-   * Mensal
-   */
-
-  if (
-    frequency.includes("Mensal")
-  ) {
-
-    const match =
-      frequency.match(
-        /\((.*?)\s*-\s*(.*?)\)/
-      );
-
-    if (!match) {
-      return false;
-    }
-
-    const weekText =
-      match[1].trim();
-
-    const dayText =
-      match[2].trim();
-
-    if (
-      dayText !==
-      currentDay
-    ) {
-      return false;
-    }
-
-    const week =
-      Math.ceil(
-        date.getDate() / 7
-      );
-
-    const weekMap = {
-      "1ª Semana": 1,
-      "2ª Semana": 2,
-      "3ª Semana": 3,
-      "4ª Semana": 4
-    };
-
-    return (
-      weekMap[weekText] ===
-      week
-    );
-  }
-
-  return false;
+  return `${m}min`;
 }
 
-function getDayOfYear(date) {
+// ============================================================
+// CONTROLES DO PLANEJAMENTO
+// ============================================================
 
-  const start =
-    new Date(
-      date.getFullYear(),
-      0,
-      0
-    );
+function buildRoutePlanningControls() {
 
-  const diff =
-    date -
-    start;
+  return `
 
-  return Math.floor(
-    diff /
-      86400000
-  );
+    <div
+      class="panel"
+      style="margin-bottom:20px;"
+    >
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          flex-wrap:wrap;
+          align-items:center;
+        "
+      >
+
+        <strong>
+          📅 Planejamento:
+        </strong>
+
+        <button
+          type="button"
+          class="secondary-btn route-period-btn"
+          data-period="today"
+        >
+          Hoje
+        </button>
+
+        <button
+          type="button"
+          class="secondary-btn route-period-btn"
+          data-period="tomorrow"
+        >
+          Amanhã
+        </button>
+
+        <button
+          type="button"
+          class="secondary-btn route-period-btn"
+          data-period="7"
+        >
+          Próximos 7 dias
+        </button>
+
+        <button
+          type="button"
+          class="secondary-btn route-period-btn"
+          data-period="30"
+        >
+          Próximos 30 dias
+        </button>
+
+        <input
+          type="date"
+          id="routeSpecificDate"
+          class="big-input"
+          style="max-width:180px;"
+        >
+
+        <button
+          type="button"
+          class="secondary-btn"
+          id="routeSpecificDateBtn"
+        >
+          Ver data
+        </button>
+
+      </div>
+
+      <div
+        id="routePlanningSummary"
+        style="margin-top:15px;"
+      ></div>
+
+    </div>
+
+  `;
 }
 
-/* ============================================================
-   RENDERIZAÇÃO DAS ROTAS
-   ============================================================ */
+// ============================================================
+// RENDERIZAÇÃO DAS ROTAS
+// ============================================================
 
-async function renderRoutes() {
+function renderRoutes() {
 
   const container =
     document.getElementById(
@@ -3357,868 +3551,1025 @@ async function renderRoutes() {
 
   if (!container) return;
 
-  container.innerHTML = `
-    <div class="empty-state">
+  container.innerHTML =
+    buildRoutePlanningControls();
 
-      <h2>
-        🚚 Calculando rotas...
-      </h2>
+  const content =
+    document.createElement(
+      "div"
+    );
 
-      <p>
-        O sistema está agrupando as solicitações,
-        analisando os veículos e otimizando a sequência.
-      </p>
+  content.id =
+    "routesPlanningContent";
 
-    </div>
-  `;
+  container.appendChild(
+    content
+  );
 
-  try {
+  setupRoutePlanningEvents();
 
-    const result =
-      await generateRoutes();
+  renderRoutePeriod(
+    "today"
+  );
+}
 
-    if (
-      !result.routes.length &&
-      !result.unassigned.length
-    ) {
+// ============================================================
+// EVENTOS DO PLANEJAMENTO
+// ============================================================
 
-      const today =
-        new Date();
+function setupRoutePlanningEvents() {
 
-      const weekdays = [
-        "Domingo",
-        "Segunda-feira",
-        "Terça-feira",
-        "Quarta-feira",
-        "Quinta-feira",
-        "Sexta-feira",
-        "Sábado"
-      ];
+  document
+    .querySelectorAll(
+      ".route-period-btn"
+    )
+    .forEach(
+      button => {
 
-      const currentDayName =
-        weekdays[
-          today.getDay()
-        ];
+        button.addEventListener(
+          "click",
+          () => {
 
-      container.innerHTML = `
-        <div class="empty-state">
+            renderRoutePeriod(
+              button.dataset.period
+            );
 
-          <h2>
-            Nenhuma Coleta Programada para Hoje
-          </h2>
+          }
+        );
 
-          <p>
-            Hoje é ${currentDayName}.
-            Não há coletas AGENDADAS
-            para esta data.
-          </p>
-
-        </div>
-      `;
-
-      return;
-    }
-
-    /*
-     * Guarda o plano atual em memória.
-     * Não salva automaticamente como rota definitiva,
-     * porque o gestor ainda precisa despachar.
-     */
-
-    window.currentGeneratedRoutes =
-      result.routes;
-
-    let html = "";
-
-    /*
-     * RESUMO
-     */
-
-    const totalStops =
-      result.routes.reduce(
-        (sum, route) =>
-          sum +
-          (route.orderedItems?.length || 0),
-        0
-      );
-
-    const totalDistance =
-      result.routes.reduce(
-        (sum, route) =>
-          sum +
-          (route.distanceKm || 0),
-        0
-      );
-
-    const totalVolume =
-      result.routes.reduce(
-        (sum, route) =>
-          sum +
-          (route.usedLiters || 0),
-        0
-      );
-
-    html += `
-
-      <div
-        class="panel"
-        style="margin-bottom:20px;"
-      >
-
-        <div class="panel-heading">
-
-          <div>
-
-            <h2>
-              📊 Planejamento de Coletas
-            </h2>
-
-            <p>
-              ${formatNumber(totalStops)}
-              paradas •
-              ${formatNumber(
-                result.routes.length
-              )}
-              rotas •
-              ${formatDistance(
-                totalDistance
-              )}
-            </p>
-
-          </div>
-
-          <button
-            class="primary-btn"
-            onclick="dispatchGeneratedRoutes()"
-          >
-            🚀 DESPACHAR ROTAS
-          </button>
-
-        </div>
-
-        <div
-          style="
-            display:grid;
-            grid-template-columns:
-              repeat(auto-fit,minmax(150px,1fr));
-            gap:12px;
-            margin-top:15px;
-          "
-        >
-
-          <div class="detail-item">
-            <span>Solicitações</span>
-            <strong>
-              ${formatNumber(totalStops)}
-            </strong>
-          </div>
-
-          <div class="detail-item">
-            <span>Rotas</span>
-            <strong>
-              ${formatNumber(
-                result.routes.length
-              )}
-            </strong>
-          </div>
-
-          <div class="detail-item">
-            <span>Distância Total</span>
-            <strong>
-              ${formatDistance(
-                totalDistance
-              )}
-            </strong>
-          </div>
-
-          <div class="detail-item">
-            <span>Volume Total</span>
-            <strong>
-              ${formatNumber(
-                totalVolume
-              )}
-              L
-            </strong>
-          </div>
-
-        </div>
-
-      </div>
-    `;
-
-    /*
-     * ROTAS
-     */
-
-    result.routes.forEach(
-      route => {
-
-        const capacityL =
-          Number(
-            route.capacityLiters
-          ) || 0;
-
-        const usedL =
-          Number(
-            route.usedLiters
-          ) || 0;
-
-        const occupancy =
-          capacityL > 0
-            ? (
-                usedL /
-                capacityL
-              ) * 100
-            : 0;
-
-        const mapUrl =
-          buildGoogleMapsUrl(
-            route.orderedItems
-          );
-
-        html += `
-
-          <div
-            class="panel"
-            style="
-              margin-bottom:20px;
-            "
-          >
-
-            <div class="panel-heading">
-
-              <div>
-
-                <h2>
-                  🚚
-                  ${escapeHTML(
-                    route.vehicleName
-                  )}
-
-                  ${
-                    route.vehiclePlate
-                      ? `(${escapeHTML(
-                          route.vehiclePlate
-                        )})`
-                      : ""
-                  }
-                </h2>
-
-                <p>
-                  Rota:
-                  <strong>
-                    ${escapeHTML(
-                      route.id
-                    )}
-                  </strong>
-                </p>
-
-              </div>
-
-              <div
-                style="
-                  display:flex;
-                  gap:8px;
-                  flex-wrap:wrap;
-                "
-              >
-
-                <button
-                  class="secondary-btn"
-                  onclick="window.open('${mapUrl}','_blank')"
-                >
-                  🗺️ MAPA
-                </button>
-
-                <button
-                  class="secondary-btn"
-                  onclick="reoptimizeRoute('${route.id}')"
-                >
-                  🔄 REOTIMIZAR
-                </button>
-
-              </div>
-
-            </div>
-
-            <div
-              style="
-                margin:15px 0;
-                display:grid;
-                grid-template-columns:
-                  repeat(auto-fit,minmax(150px,1fr));
-                gap:10px;
-              "
-            >
-
-              <div class="detail-item">
-                <span>Volume</span>
-                <strong>
-                  ${formatNumber(
-                    usedL
-                  )}
-                  /
-                  ${formatNumber(
-                    capacityL
-                  )}
-                  L
-                </strong>
-              </div>
-
-              <div class="detail-item">
-                <span>Ocupação</span>
-                <strong>
-                  ${occupancy.toFixed(1)}%
-                </strong>
-              </div>
-
-              <div class="detail-item">
-                <span>Peso</span>
-                <strong>
-                  ${formatNumber(
-                    route.usedKg || 0
-                  )}
-                  kg
-                </strong>
-              </div>
-
-              <div class="detail-item">
-                <span>Distância</span>
-                <strong>
-                  ${formatDistance(
-                    route.distanceKm
-                  )}
-                </strong>
-              </div>
-
-              <div class="detail-item">
-                <span>Tempo estimado</span>
-                <strong>
-                  ${formatDuration(
-                    route.durationMinutes
-                  )}
-                </strong>
-              </div>
-
-              <div class="detail-item">
-                <span>Cálculo</span>
-                <strong>
-                  ${escapeHTML(
-                    route.routingSource
-                  )}
-                </strong>
-              </div>
-
-            </div>
-
-            <div
-              style="
-                overflow-x:auto;
-              "
-            >
-
-              <table>
-
-                <thead>
-
-                  <tr>
-                    <th>Seq.</th>
-                    <th>Código</th>
-                    <th>Solicitante</th>
-                    <th>Local</th>
-                    <th>Materiais</th>
-                    <th>Volume</th>
-                    <th>Peso</th>
-                  </tr>
-
-                </thead>
-
-                <tbody>
-
-                  ${
-                    route.orderedItems
-                      .map(
-                        (item, index) => `
-                          <tr>
-
-                            <td>
-                              <strong>
-                                ${index + 1}
-                              </strong>
-                            </td>
-
-                            <td>
-                              <strong>
-                                ${escapeHTML(
-                                  item.id
-                                )}
-                              </strong>
-                            </td>
-
-                            <td>
-                              ${escapeHTML(
-                                item.name
-                              )}
-                            </td>
-
-                            <td>
-                              ${escapeHTML(
-                                item.type
-                              )}
-
-                              ${
-                                item.customLocationName
-                                  ? `<br><small>
-                                      ${escapeHTML(
-                                        item.customLocationName
-                                      )}
-                                    </small>`
-                                  : ""
-                              }
-                            </td>
-
-                            <td>
-                              ${escapeHTML(
-                                item.materials
-                              )}
-                            </td>
-
-                            <td>
-
-                              <strong>
-                                ${formatNumber(
-                                  item.allocatedLiters
-                                )}
-                                L
-                              </strong>
-
-                              ${
-                                item.isPartial
-                                  ? `
-                                    <br>
-                                    <small
-                                      style="
-                                        color:var(--orange);
-                                        font-weight:bold;
-                                      "
-                                    >
-                                      Carga fracionada
-                                    </small>
-                                  `
-                                  : ""
-                              }
-
-                            </td>
-
-                            <td>
-                              ${formatNumber(
-                                item.allocatedWeightKg,
-                                1
-                              )}
-                              kg
-                            </td>
-
-                          </tr>
-                        `
-                      )
-                      .join("")
-                  }
-
-                </tbody>
-
-              </table>
-
-            </div>
-
-          </div>
-
-        `;
       }
     );
 
-    /*
-     * NÃO ATRIBUÍDOS
-     */
+  const specificDateBtn =
+    document.getElementById(
+      "routeSpecificDateBtn"
+    );
 
-    if (
-      result.unassigned.length
-    ) {
+  const specificDateInput =
+    document.getElementById(
+      "routeSpecificDate"
+    );
+
+  specificDateBtn?.addEventListener(
+    "click",
+    () => {
+
+      if (
+        !specificDateInput.value
+      ) {
+
+        toast(
+          "Selecione uma data."
+        );
+
+        return;
+      }
+
+      renderRoutePeriod(
+        specificDateInput.value
+      );
+
+    }
+  );
+}
+
+// ============================================================
+// PERÍODO DE ROTAS
+// ============================================================
+
+function getDatesFromPeriod(
+  period
+) {
+
+  const today =
+    normalizeDate(
+      new Date()
+    );
+
+  if (
+    period === "today"
+  ) {
+    return [today];
+  }
+
+  if (
+    period === "tomorrow"
+  ) {
+    return [
+      addDays(
+        today,
+        1
+      )
+    ];
+  }
+
+  if (
+    period === "7"
+  ) {
+
+    return Array.from(
+      { length: 7 },
+      (_, i) =>
+        addDays(
+          today,
+          i
+        )
+    );
+  }
+
+  if (
+    period === "30"
+  ) {
+
+    return Array.from(
+      { length: 30 },
+      (_, i) =>
+        addDays(
+          today,
+          i
+        )
+    );
+  }
+
+  if (
+    /^\d{4}-\d{2}-\d{2}$/.test(
+      period
+    )
+  ) {
+
+    const [
+      year,
+      month,
+      day
+    ] =
+      period
+        .split("-")
+        .map(Number);
+
+    return [
+      new Date(
+        year,
+        month - 1,
+        day
+      )
+    ];
+  }
+
+  return [today];
+}
+
+// ============================================================
+// RENDERIZA UM PERÍODO
+// ============================================================
+
+function renderRoutePeriod(
+  period
+) {
+
+  const content =
+    document.getElementById(
+      "routesPlanningContent"
+    );
+
+  if (!content) return;
+
+  const dates =
+    getDatesFromPeriod(
+      period
+    );
+
+  let totalRequests = 0;
+
+  let totalRoutes = 0;
+
+  let totalLiters = 0;
+
+  let totalKm = 0;
+
+  let html = "";
+
+  dates.forEach(
+    date => {
+
+      const result =
+        generateRoutesForDate(
+          date
+        );
+
+      if (!result) {
+        return;
+      }
+
+      const routes =
+        result.routes || [];
+
+      const unassigned =
+        result.unassigned || [];
+
+      const points =
+        getRequestsForDate(
+          date
+        );
+
+      totalRequests +=
+        points.length;
+
+      totalRoutes +=
+        routes.length;
+
+      totalLiters +=
+        routes.reduce(
+          (sum, route) =>
+            sum +
+            route.totalLiters,
+          0
+        );
+
+      totalKm +=
+        routes.reduce(
+          (sum, route) =>
+            sum +
+            route.distanceKm,
+          0
+        );
 
       html += `
 
         <div
           class="panel"
-          style="
-            border-color:var(--orange);
-            margin-bottom:20px;
-          "
+          style="margin-bottom:20px;"
         >
 
-          <h2
-            style="
-              color:var(--orange);
-            "
-          >
-            ⚠️ Solicitações que não cabem nos veículos
-          </h2>
-
-          <p>
-            O sistema identificou solicitações cuja
-            carga estimada excede simultaneamente
-            a capacidade volumétrica e/ou de peso
-            dos veículos cadastrados.
-          </p>
-
           <div
-            style="
-              margin-top:12px;
-              overflow-x:auto;
-            "
+            class="panel-heading"
           >
 
-            <table>
+            <div>
 
-              <thead>
+              <h2>
+                📅 ${formatDateBR(date)}
+              </h2>
 
-                <tr>
-                  <th>Código</th>
-                  <th>Solicitante</th>
-                  <th>Volume estimado</th>
-                  <th>Peso estimado</th>
-                </tr>
+              <p>
 
-              </thead>
+                ${
+                  points.length
+                }
+                coleta(s) programada(s)
 
-              <tbody>
+                •
 
-                ${result.unassigned
-                  .map(
-                    item => `
-                      <tr>
+                ${
+                  routes.length
+                }
+                rota(s)
 
-                        <td>
-                          <strong>
-                            ${escapeHTML(
-                              item.id
-                            )}
-                          </strong>
-                        </td>
+              </p>
 
-                        <td>
-                          ${escapeHTML(
-                            item.name
-                          )}
-                        </td>
-
-                        <td>
-                          ${formatNumber(
-                            item.totalLiters
-                          )}
-                          L
-                        </td>
-
-                        <td>
-                          ${formatNumber(
-                            item.totalWeightKg,
-                            1
-                          )}
-                          kg
-                        </td>
-
-                      </tr>
-                    `
-                  )
-                  .join("")}
-
-              </tbody>
-
-            </table>
+            </div>
 
           </div>
 
+          ${
+            routes.length
+
+              ? routes
+                  .map(
+                    route =>
+                      routeCardHTML(
+                        route
+                      )
+                  )
+                  .join("")
+
+              : `
+
+                <div
+                  class="empty-state"
+                >
+
+                  <h3>
+                    Nenhuma rota necessária
+                  </h3>
+
+                  <p>
+                    Não há solicitações
+                    agendadas para esta data.
+                  </p>
+
+                </div>
+
+              `
+          }
+
+          ${
+            unassigned.length
+
+              ? `
+
+                <div
+                  style="
+                    margin-top:15px;
+                    padding:15px;
+                    border:2px solid var(--orange);
+                    border-radius:8px;
+                  "
+                >
+
+                  <h3
+                    style="
+                      color:var(--orange);
+                    "
+                  >
+                    ⚠️ Coletas sem veículo
+                  </h3>
+
+                  <p>
+                    Estas solicitações
+                    não puderam ser
+                    alocadas automaticamente.
+                  </p>
+
+                  <ul>
+
+                    ${unassigned
+                      .map(
+                        item =>
+                          `
+                          <li>
+
+                            <strong>
+                              ${escapeHTML(
+                                item.name
+                              )}
+                            </strong>
+
+                            —
+                            ≈
+                            ${Math.round(
+                              item.totalLiters
+                            )}
+                            L
+
+                            /
+                            ${Math.round(
+                              item.estimatedKg
+                            )}
+                            kg
+
+                          </li>
+                          `
+                      )
+                      .join("")}
+
+                  </ul>
+
+                </div>
+
+              `
+
+              : ""
+          }
+
         </div>
+
       `;
     }
+  );
 
-    container.innerHTML =
-      html;
+  if (!html) {
 
-  } catch (error) {
+    html = `
 
-    console.error(
-      "Erro ao gerar rotas:",
-      error
-    );
-
-    container.innerHTML = `
-
-      <div
-        class="empty-state"
-        style="
-          border:1px solid var(--orange);
-        "
-      >
+      <div class="empty-state">
 
         <h2>
-          ⚠️ Erro ao calcular as rotas
+          Nenhuma coleta encontrada
         </h2>
 
         <p>
-          ${escapeHTML(
-            error.message ||
-            "Erro desconhecido."
-          )}
+          Não existem solicitações
+          programadas para o período selecionado.
         </p>
 
-        <button
-          class="primary-btn"
-          onclick="renderRoutes()"
-        >
-          Tentar novamente
-        </button>
+      </div>
+
+    `;
+  }
+
+  content.innerHTML =
+    html;
+
+  const summary =
+    document.getElementById(
+      "routePlanningSummary"
+    );
+
+  if (summary) {
+
+    summary.innerHTML = `
+
+      <div
+        style="
+          display:flex;
+          gap:12px;
+          flex-wrap:wrap;
+        "
+      >
+
+        <div>
+          <strong>
+            ${totalRequests}
+          </strong>
+          coletas
+        </div>
+
+        <div>
+          <strong>
+            ${totalRoutes}
+          </strong>
+          rotas
+        </div>
+
+        <div>
+          <strong>
+            ${Math.round(
+              totalLiters
+            ).toLocaleString(
+              "pt-BR"
+            )}
+          </strong>
+          L
+        </div>
+
+        <div>
+          <strong>
+            ${totalKm.toFixed(1)}
+          </strong>
+          km estimados
+        </div>
 
       </div>
+
     `;
   }
 }
 
-/* ============================================================
-   GOOGLE MAPS
-   ============================================================ */
+// ============================================================
+// CARD DE ROTA
+// ============================================================
 
-function buildGoogleMapsUrl(
-  orderedItems
+function routeCardHTML(
+  route
 ) {
 
-  const points = [
-    {
-      lat:
-        ROUTING_CONFIG.depot.lat,
-      lng:
-        ROUTING_CONFIG.depot.lng
-    },
+  const mapsUrl =
+    buildGoogleMapsRouteURL(
+      route
+    );
 
-    ...orderedItems
-      .map(item =>
-        getCoordinates(item)
-      )
-      .filter(Boolean),
+  return `
 
-    {
-      lat:
-        ROUTING_CONFIG.depot.lat,
-      lng:
-        ROUTING_CONFIG.depot.lng
-    }
-  ];
+    <div
+      class="panel"
+      style="
+        margin-top:12px;
+        border-left:5px solid var(--orange);
+      "
+    >
 
-  if (points.length < 2) {
-    return "https://www.google.com/maps";
-  }
+      <div
+        style="
+          display:flex;
+          justify-content:space-between;
+          gap:15px;
+          flex-wrap:wrap;
+        "
+      >
+
+        <div>
+
+          <h3>
+            🚚 ${escapeHTML(
+              route.vehicleName
+            )}
+            —
+            ${escapeHTML(
+              route.vehiclePlate
+            )}
+          </h3>
+
+          <p>
+
+            <strong>
+              ${route.id}
+            </strong>
+
+            •
+
+            ${route.stops.length}
+            paradas
+
+          </p>
+
+        </div>
+
+        <div>
+
+          ${statusBadge(
+            route.status
+          )}
+
+        </div>
+
+      </div>
+
+      <div
+        style="
+          display:grid;
+          grid-template-columns:
+            repeat(auto-fit,minmax(130px,1fr));
+          gap:10px;
+          margin:15px 0;
+        "
+      >
+
+        <div>
+          <strong>
+            ${route.totalLiters.toLocaleString(
+              "pt-BR"
+            )}
+            L
+          </strong>
+
+          <small>
+            <br>Volume
+          </small>
+        </div>
+
+        <div>
+          <strong>
+            ${route.totalKg.toLocaleString(
+              "pt-BR"
+            )}
+            kg
+          </strong>
+
+          <small>
+            <br>Peso estimado
+          </small>
+        </div>
+
+        <div>
+          <strong>
+            ${route.occupancyPercent}%
+          </strong>
+
+          <small>
+            <br>Ocupação volumétrica
+          </small>
+        </div>
+
+        <div>
+          <strong>
+            ${route.distanceKm.toFixed(1)}
+            km
+          </strong>
+
+          <small>
+            <br>Distância
+          </small>
+        </div>
+
+        <div>
+          <strong>
+            ${formatDuration(
+              route.estimatedMinutes
+            )}
+          </strong>
+
+          <small>
+            <br>Tempo estimado
+          </small>
+        </div>
+
+      </div>
+
+      <div
+        style="
+          margin:12px 0;
+          padding:10px;
+          background:#f5f5f5;
+          border-radius:8px;
+        "
+      >
+
+        <strong>
+          📍 Sequência da rota
+        </strong>
+
+        <div
+          style="
+            margin-top:8px;
+            display:flex;
+            flex-wrap:wrap;
+            gap:5px;
+          "
+        >
+
+          <span>
+            🏠 Base
+          </span>
+
+          ${route.stops
+            .map(
+              stop =>
+                `
+                <span>
+                  →
+                  ${stop.order}.
+                  ${escapeHTML(
+                    stop.name
+                  )}
+                </span>
+                `
+            )
+            .join("")}
+
+          <span>
+            → 🏠 Base
+          </span>
+
+        </div>
+
+      </div>
+
+      <div
+        class="table-wrap"
+        style="margin-top:12px;"
+      >
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>
+                #
+              </th>
+
+              <th>
+                Solicitação
+              </th>
+
+              <th>
+                Local
+              </th>
+
+              <th>
+                Volume
+              </th>
+
+              <th>
+                Peso
+              </th>
+
+              <th>
+                Mapa
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            ${route.stops
+              .map(
+                stop =>
+                  `
+
+                  <tr>
+
+                    <td>
+                      <strong>
+                        ${stop.order}
+                      </strong>
+                    </td>
+
+                    <td>
+
+                      <strong>
+                        ${escapeHTML(
+                          stop.requestId
+                        )}
+                      </strong>
+
+                      <br>
+
+                      ${escapeHTML(
+                        stop.name
+                      )}
+
+                    </td>
+
+                    <td>
+                      ${stop.latitude.toFixed(5)},
+                      ${stop.longitude.toFixed(5)}
+                    </td>
+
+                    <td>
+                      ≈
+                      ${stop.liters}
+                      L
+                    </td>
+
+                    <td>
+                      ≈
+                      ${stop.estimatedKg}
+                      kg
+                    </td>
+
+                    <td>
+
+                      <a
+                        href="https://maps.google.com/?q=${stop.latitude},${stop.longitude}"
+                        target="_blank"
+                        class="secondary-btn"
+                        style="text-decoration:none;"
+                      >
+                        📍 Abrir
+                      </a>
+
+                    </td>
+
+                  </tr>
+
+                `
+              )
+              .join("")}
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          flex-wrap:wrap;
+          margin-top:15px;
+        "
+      >
+
+        <a
+          href="${mapsUrl}"
+          target="_blank"
+          class="secondary-btn"
+          style="text-decoration:none;"
+        >
+          🗺️ ABRIR ROTA NO GOOGLE MAPS
+        </a>
+
+        <button
+          type="button"
+          class="primary-btn"
+          onclick="dispatchRoute('${route.id}')"
+        >
+          🚀 DESPACHAR ROTA
+        </button>
+
+        <button
+          type="button"
+          class="secondary-btn"
+          onclick="reoptimizeRoute('${route.id}')"
+        >
+          🔄 REOTIMIZAR
+        </button>
+
+      </div>
+
+    </div>
+
+  `;
+}
+
+// ============================================================
+// GOOGLE MAPS
+// ============================================================
+
+function buildGoogleMapsRouteURL(
+  route
+) {
 
   const origin =
-    `${points[0].lat},${points[0].lng}`;
+    `${DEPOT.lat},${DEPOT.lng}`;
 
   const destination =
-    `${points[
-      points.length - 1
-    ].lat},${points[
-      points.length - 1
-    ].lng}`;
+    origin;
 
   const waypoints =
-    points
-      .slice(1, -1)
+    route.stops
       .map(
-        p =>
-          `${p.lat},${p.lng}`
+        stop =>
+          `${stop.latitude},${stop.longitude}`
       )
       .join("|");
 
-  let url =
-    `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
-
-  if (waypoints) {
-    url +=
-      `&waypoints=${encodeURIComponent(
-        waypoints
-      )}`;
-  }
-
-  return url;
-}
-
-/* ============================================================
-   DESPACHO
-   ============================================================ */
-
-function dispatchGeneratedRoutes() {
-
-  const generated =
-    window.currentGeneratedRoutes;
-
-  if (
-    !generated ||
-    !generated.length
-  ) {
-    toast(
-      "Não existem rotas calculadas para despachar."
-    );
-    return;
-  }
-
-  const confirmDispatch =
-    confirm(
-      `Deseja despachar ${generated.length} rota(s)?\n\nAs solicitações serão alteradas para EM ROTA.`
-    );
-
-  if (!confirmDispatch) {
-    return;
-  }
-
-  generated.forEach(route => {
-
-    const storedRoute = {
-      ...route,
-
-      status:
-        "EM ROTA",
-
-      dispatchedAt:
-        new Date().toISOString()
-    };
-
-    routes.push(
-      storedRoute
-    );
-
-    route.orderedItems.forEach(
-      item => {
-
-        const request =
-          requests.find(
-            r =>
-              r.id === item.id
-          );
-
-        if (request) {
-          request.status =
-            "EM ROTA";
-        }
-      }
-    );
-  });
-
-  saveRoutes();
-  save();
-
-  window.currentGeneratedRoutes =
-    null;
-
-  renderRoutes();
-  renderDashboard();
-
-  toast(
-    "Rotas despachadas com sucesso."
+  return (
+    "https://www.google.com/maps/dir/" +
+    `${origin}/${waypoints}/${destination}`
   );
 }
 
-/* ============================================================
-   REOTIMIZAÇÃO
-   ============================================================ */
+// ============================================================
+// DESPACHAR ROTA
+// ============================================================
 
-async function reoptimizeRoute(
+function dispatchRoute(
   routeId
 ) {
 
   const route =
-    routes.find(
-      r => r.id === routeId
+    findRoute(
+      routeId
     );
 
   if (!route) {
+    toast(
+      "Rota não encontrada."
+    );
+    return;
+  }
 
-    /*
-     * Pode ser uma rota ainda não despachada.
-     */
-
-    const generated =
-      window.currentGeneratedRoutes
-        ?.find(
-          r => r.id === routeId
-        );
-
-    if (!generated) {
-      toast(
-        "Rota não encontrada."
-      );
-      return;
-    }
-
-    const optimized =
-      twoOpt(
-        generated.orderedItems
-      );
-
-    const osrm =
-      await calculateOSRMRoute(
-        optimized
-      );
-
-    const info =
-      osrm ||
-      calculateFallbackRoute(
-        optimized
-      );
-
-    generated.orderedItems =
-      optimized;
-
-    generated.distanceKm =
-      info.distanceKm;
-
-    generated.durationMinutes =
-      info.durationMinutes;
-
-    generated.routingSource =
-      info.source;
-
-    renderRoutes();
+  if (
+    route.status === "EM ROTA"
+  ) {
 
     toast(
-      "Rota reotimizada."
+      "Esta rota já está em execução."
     );
 
     return;
   }
 
+  route.status =
+    "EM ROTA";
+
+  route.dispatchedAt =
+    new Date().toISOString();
+
+  route.stops.forEach(
+    stop => {
+
+      const request =
+        requests.find(
+          r =>
+            r.id ===
+            stop.requestId
+        );
+
+      if (request) {
+        request.status =
+          "EM ROTA";
+      }
+
+    }
+  );
+
+  save();
+
+  saveRoutes();
+
+  renderDashboard();
+
+  renderRoutes();
+
+  toast(
+    `Rota ${route.id} despachada com sucesso.`
+  );
+}
+
+// ============================================================
+// ENCONTRAR ROTA
+// ============================================================
+
+function findRoute(
+  routeId
+) {
+
+  return generatedRoutes.find(
+    r =>
+      r.id === routeId
+  );
+}
+
+// ============================================================
+// REOTIMIZAR
+// ============================================================
+
+function reoptimizeRoute(
+  routeId
+) {
+
+  const route =
+    findRoute(
+      routeId
+    );
+
+  if (!route) return;
+
+  const requestsInRoute =
+    route.stops
+      .map(
+        stop =>
+          requests.find(
+            r =>
+              r.id ===
+              stop.requestId
+          )
+      )
+      .filter(Boolean)
+      .map(
+        r => ({
+
+          ...r,
+
+          totalLiters:
+            convertToLiters(
+              r.quantity,
+              r.unit,
+              r.materials
+            ),
+
+          estimatedKg:
+            estimateWeightKg(
+              r.quantity,
+              r.unit,
+              r.materials
+            )
+
+        })
+      );
+
   const optimized =
     twoOpt(
-      route.orderedItems
+      requestsInRoute
     );
 
-  const osrm =
-    await calculateOSRMRoute(
-      optimized
-    );
+  route.stops =
+    optimized.map(
+      (item, index) => ({
 
-  const info =
-    osrm ||
-    calculateFallbackRoute(
-      optimized
-    );
+        order:
+          index + 1,
 
-  route.orderedItems =
-    optimized;
+        requestId:
+          item.id,
+
+        name:
+          item.name,
+
+        latitude:
+          Number(item.latitude),
+
+        longitude:
+          Number(item.longitude),
+
+        liters:
+          Math.round(
+            item.totalLiters
+          ),
+
+        estimatedKg:
+          Math.round(
+            item.estimatedKg
+          )
+
+      })
+    );
 
   route.distanceKm =
-    info.distanceKm;
+    Number(
+      routeDistance(
+        optimized
+      ).toFixed(2)
+    );
 
-  route.durationMinutes =
-    info.durationMinutes;
-
-  route.routingSource =
-    info.source;
+  route.estimatedMinutes =
+    Math.max(
+      20,
+      Math.round(
+        (
+          route.distanceKm /
+          30
+        ) * 60 +
+        route.stops.length * 10
+      )
+    );
 
   saveRoutes();
 
@@ -4229,98 +4580,32 @@ async function reoptimizeRoute(
   );
 }
 
-/* ============================================================
-   FINALIZAÇÃO DE COLETA
-   ============================================================ */
-
-function registerRouteCollection(
-  routeId
-) {
-
-  const route =
-    routes.find(
-      r => r.id === routeId
-    );
-
-  if (!route) {
-    toast(
-      "Rota não encontrada."
-    );
-    return;
-  }
-
-  const confirmCollection =
-    confirm(
-      `Deseja registrar a finalização da rota ${route.id}?`
-    );
-
-  if (!confirmCollection) {
-    return;
-  }
-
-  route.status =
-    "FINALIZADA";
-
-  route.finishedAt =
-    new Date().toISOString();
-
-  route.orderedItems.forEach(
-    item => {
-
-      const request =
-        requests.find(
-          r =>
-            r.id === item.id
-        );
-
-      if (request) {
-
-        request.status =
-          "COLETADA";
-
-        request.collectedAt =
-          new Date().toISOString();
-      }
-    }
-  );
-
-  saveRoutes();
-  save();
-
-  renderRoutes();
-  renderDashboard();
-
-  toast(
-    "Rota finalizada com sucesso."
-  );
-}
-
-/* ============================================================
-   CLIENTES
-   ============================================================ */
+// ============================================================
+// CLIENTES
+// ============================================================
 
 function renderClients() {
 
   const uniqueMap =
     new Map();
 
-  requests.forEach(r => {
+  requests.forEach(
+    r => {
 
-    const key =
-      `${(r.name || "")
-        .toLowerCase()
-        .trim()}|${(r.phone || "")
-        .trim()}`;
+      const key =
+        `${r.name.toLowerCase().trim()}|${r.phone.trim()}`;
 
-    if (
-      !uniqueMap.has(key)
-    ) {
-      uniqueMap.set(
-        key,
-        r
-      );
+      if (
+        !uniqueMap.has(key)
+      ) {
+        uniqueMap.set(
+          key,
+          r
+        );
+      }
+
     }
-  });
+  );
 
   const uniqueClients =
     Array.from(
@@ -4339,7 +4624,9 @@ function renderClients() {
 
       ? uniqueClients
           .map(
-            r => `
+            r =>
+              `
+
               <article
                 class="client-card"
                 onclick="openClientDetails('${escapeHTML(r.id)}')"
@@ -4381,14 +4668,21 @@ function renderClients() {
                 </div>
 
                 <p>
-                  <strong>Telefone:</strong>
+                  <strong>
+                    Telefone:
+                  </strong>
+
                   ${escapeHTML(
                     r.phone
                   )}
                 </p>
 
                 <p>
-                  <strong>Local:</strong>
+
+                  <strong>
+                    Local:
+                  </strong>
+
                   ${escapeHTML(
                     r.type
                   )}
@@ -4400,48 +4694,65 @@ function renderClients() {
                         )})`
                       : ""
                   }
+
                 </p>
 
                 <p>
-                  <strong>Frequência:</strong>
+
+                  <strong>
+                    Frequência:
+                  </strong>
+
                   ${escapeHTML(
                     r.frequency ||
                     "Não informada"
                   )}
+
                 </p>
 
                 <p>
+
                   <strong>
                     Último Protocolo:
                   </strong>
+
                   ${escapeHTML(
                     r.id
                   )}
+
                 </p>
 
               </article>
+
             `
           )
           .join("")
 
       : `
-          <div class="empty-state">
-            <h2>
-              Nenhum cliente cadastrado
-            </h2>
-          </div>
-        `;
+
+        <div class="empty-state">
+
+          <h2>
+            Nenhum cliente cadastrado
+          </h2>
+
+        </div>
+
+      `;
 }
 
-/* ============================================================
-   DETALHES DO CLIENTE
-   ============================================================ */
+// ============================================================
+// DETALHES DO CLIENTE
+// ============================================================
 
-function openClientDetails(id) {
+function openClientDetails(
+  id
+) {
 
   const req =
     requests.find(
-      r => r.id === id
+      r =>
+        r.id === id
     );
 
   if (!req) return;
@@ -4461,11 +4772,7 @@ function openClientDetails(id) {
       "clientModalContent"
     );
 
-  if (
-    !modal ||
-    !title ||
-    !content
-  ) {
+  if (!modal || !title || !content) {
     return;
   }
 
@@ -4481,11 +4788,13 @@ function openClientDetails(id) {
       )
     );
 
-  const estWeight =
-    estimateWeightKg(
-      req.quantity,
-      req.unit,
-      req.materials
+  const estKg =
+    Math.round(
+      estimateWeightKg(
+        req.quantity,
+        req.unit,
+        req.materials
+      )
     );
 
   content.innerHTML = `
@@ -4493,6 +4802,7 @@ function openClientDetails(id) {
     <div class="detail-grid">
 
       <div class="detail-item">
+
         <span>
           Código do Protocolo
         </span>
@@ -4502,6 +4812,7 @@ function openClientDetails(id) {
             req.id
           )}
         </strong>
+
       </div>
 
       <div class="detail-item">
@@ -4560,7 +4871,7 @@ function openClientDetails(id) {
 
           ${
             req.customLocationName
-              ? ` — ${escapeHTML(
+              ? `— ${escapeHTML(
                   req.customLocationName
                 )}`
               : ""
@@ -4602,7 +4913,7 @@ function openClientDetails(id) {
       <div class="detail-item">
 
         <span>
-          Carga Estimada Declarada
+          Carga Estimada
         </span>
 
         <strong>
@@ -4610,6 +4921,7 @@ function openClientDetails(id) {
           ${escapeHTML(
             req.quantity
           )}
+
           ${escapeHTML(
             req.unit
           )}
@@ -4617,18 +4929,13 @@ function openClientDetails(id) {
           <br>
 
           ≈
-          ${formatNumber(
-            estLiters
-          )}
-          L
+          ${estLiters}
+          Litros
 
           <br>
 
           ≈
-          ${formatNumber(
-            estWeight,
-            1
-          )}
+          ${estKg}
           kg
 
         </strong>
@@ -4651,6 +4958,7 @@ function openClientDetails(id) {
             req.longitude
 
               ? `
+
                 <a
                   href="https://maps.google.com/?q=${req.latitude},${req.longitude}"
                   target="_blank"
@@ -4659,6 +4967,7 @@ function openClientDetails(id) {
                     font-weight:bold;
                   "
                 >
+
                   Lat:
                   ${req.latitude}
 
@@ -4668,12 +4977,12 @@ function openClientDetails(id) {
                   ${req.longitude}
 
                   (Abrir Google Maps 🔗)
+
                 </a>
+
               `
 
-              : `
-                Coordenadas não registradas
-              `
+              : "Coordenadas não registradas"
           }
 
         </strong>
@@ -4706,7 +5015,6 @@ function openClientDetails(id) {
         display:flex;
         gap:12px;
         justify-content:flex-end;
-        flex-wrap:wrap;
       "
     >
 
@@ -4729,6 +5037,7 @@ function openClientDetails(id) {
       </button>
 
     </div>
+
   `;
 
   modal.classList.remove(
@@ -4736,15 +5045,16 @@ function openClientDetails(id) {
   );
 }
 
-/* ============================================================
-   EDIÇÃO
-   ============================================================ */
+// ============================================================
+// EDITAR CLIENTE
+// ============================================================
 
 function editClient(id) {
 
   const req =
     requests.find(
-      r => r.id === id
+      r =>
+        r.id === id
     );
 
   if (!req) return;
@@ -4759,8 +5069,6 @@ function editClient(id) {
     document.getElementById(
       "modalFormContainer"
     );
-
-  if (!container) return;
 
   container.innerHTML =
     buildFormHTML(
@@ -4779,21 +5087,20 @@ function editClient(id) {
   form.querySelector(
     'input[name="name"]'
   ).value =
-    req.name || "";
+    req.name;
 
   form.querySelector(
     'input[name="phone"]'
   ).value =
-    req.phone || "";
+    req.phone;
 
   form.querySelector(
     ".type-select"
   ).value =
-    req.type || "Residência";
+    req.type;
 
   if (
-    req.type !==
-    "Residência"
+    req.type !== "Residência"
   ) {
 
     const customWrap =
@@ -4801,7 +5108,7 @@ function editClient(id) {
         ".custom-location-wrap"
       );
 
-    customWrap?.classList.remove(
+    customWrap.classList.remove(
       "hidden"
     );
 
@@ -4815,12 +5122,12 @@ function editClient(id) {
   form.querySelector(
     'input[name="quantity"]'
   ).value =
-    req.quantity || "";
+    req.quantity;
 
   form.querySelector(
     'select[name="unit"]'
   ).value =
-    req.unit || "";
+    req.unit;
 
   form.querySelector(
     "textarea[name='notes']"
@@ -4837,197 +5144,146 @@ function editClient(id) {
   ).value =
     req.longitude || "";
 
-  /*
-   * Recarrega materiais.
-   */
+  form.onsubmit =
+    e => {
 
-  const materials =
-    (req.materials || "")
-      .split(",")
-      .map(
-        m =>
-          m
-            .trim()
-            .toLowerCase()
-      );
+      e.preventDefault();
 
-  form
-    .querySelectorAll(
-      'input[name="materials_list"]'
-    )
-    .forEach(
-      checkbox => {
+      const formData =
+        new FormData(form);
 
-        const normalized =
-          checkbox.value
-            .toLowerCase();
+      const data =
+        Object.fromEntries(
+          formData.entries()
+        );
 
-        if (
-          materials.includes(
-            normalized
+      let checkedMaterials =
+        [
+          ...form.querySelectorAll(
+            'input[name="materials_list"]:checked'
           )
-        ) {
-          checkbox.checked =
-            true;
-        }
+        ].map(
+          c => c.value
+        );
+
+      if (
+        checkedMaterials.length === 0
+      ) {
+
+        checkedMaterials = [
+          req.materials
+        ];
+
       }
-    );
 
-  form.onsubmit = e => {
+      req.name =
+        data.name;
 
-    e.preventDefault();
+      req.phone =
+        data.phone;
 
-    const formData =
-      new FormData(form);
+      req.type =
+        data.type;
 
-    const data =
-      Object.fromEntries(
-        formData.entries()
+      req.customLocationName =
+        data.type !== "Residência"
+          ? data.customLocationName
+          : "";
+
+      req.quantity =
+        data.quantity;
+
+      req.unit =
+        data.unit;
+
+      req.notes =
+        data.notes;
+
+      req.materials =
+        checkedMaterials.join(
+          ", "
+        );
+
+      save();
+
+      closeModal();
+
+      renderRequests();
+
+      renderClients();
+
+      renderDashboard();
+
+      toast(
+        "Cadastro do cliente atualizado com sucesso!"
       );
 
-    let checkedMaterials =
-      [
-        ...form.querySelectorAll(
-          'input[name="materials_list"]:checked'
-        )
-      ].map(
-        c => c.value
-      );
-
-    if (!checkedMaterials.length) {
-      checkedMaterials =
-        [req.materials];
-    }
-
-    req.name =
-      data.name;
-
-    req.phone =
-      data.phone;
-
-    req.type =
-      data.type;
-
-    req.customLocationName =
-      data.type !==
-        "Residência"
-        ? data.customLocationName
-        : "";
-
-    req.quantity =
-      data.quantity;
-
-    req.unit =
-      data.unit;
-
-    req.notes =
-      data.notes;
-
-    req.materials =
-      checkedMaterials.join(
-        ", "
-      );
-
-    save();
-
-    closeModal();
-
-    renderRequests();
-    renderClients();
-    renderDashboard();
-
-    toast(
-      "Cadastro do cliente atualizado com sucesso!"
-    );
-  };
+    };
 
   document
     .getElementById(
       "requestModal"
     )
-    ?.classList.remove(
+    .classList.remove(
       "hidden"
     );
 }
 
-/* ============================================================
-   EXCLUSÃO
-   ============================================================ */
+// ============================================================
+// EXCLUIR CLIENTE
+// ============================================================
 
 function deleteClient(id) {
 
   if (
-    !confirm(
+    confirm(
       `Tem certeza que deseja excluir o cadastro/solicitação ${id}?`
     )
   ) {
-    return;
+
+    requests =
+      requests.filter(
+        r =>
+          r.id !== id
+      );
+
+    generatedRoutes =
+      generatedRoutes.filter(
+        route =>
+          !route.stops.some(
+            stop =>
+              stop.requestId ===
+              id
+          )
+      );
+
+    save();
+
+    saveRoutes();
+
+    document
+      .getElementById(
+        "clientModal"
+      )
+      ?.classList.add(
+        "hidden"
+      );
+
+    renderRequests();
+
+    renderClients();
+
+    renderDashboard();
+
+    toast(
+      "Registro excluído com sucesso."
+    );
   }
-
-  requests =
-    requests.filter(
-      r => r.id !== id
-    );
-
-  save();
-
-  document
-    .getElementById(
-      "clientModal"
-    )
-    ?.classList.add(
-      "hidden"
-    );
-
-  renderRequests();
-  renderClients();
-  renderDashboard();
-
-  toast(
-    "Registro excluído com sucesso."
-  );
 }
 
-/* ============================================================
-   TELEFONE
-   ============================================================ */
-
-function formatPhone(value) {
-
-  const digits =
-    value
-      .replace(/\D/g, "")
-      .slice(0, 11);
-
-  if (
-    digits.length <= 2
-  ) {
-    return digits
-      ? `(${digits}`
-      : "";
-  }
-
-  if (
-    digits.length <= 7
-  ) {
-    return `(${digits.slice(
-      0,
-      2
-    )}) ${digits.slice(2)}`;
-  }
-
-  return `(${digits.slice(
-    0,
-    2
-  )}) ${digits.slice(
-    2,
-    7
-  )}-${digits.slice(7)}`;
-}
-
-/* ============================================================
-   INICIALIZAÇÃO
-   ============================================================ */
+// ============================================================
+// INICIALIZAÇÃO
+// ============================================================
 
 document.addEventListener(
   "DOMContentLoaded",
@@ -5037,31 +5293,37 @@ document.addEventListener(
       .querySelectorAll(
         ".nav-item"
       )
-      .forEach(btn => {
+      .forEach(
+        btn => {
 
-        btn.addEventListener(
-          "click",
-          () =>
-            showSection(
-              btn.dataset.section
-            )
-        );
-      });
+          btn.addEventListener(
+            "click",
+            () =>
+              showSection(
+                btn.dataset.section
+              )
+          );
+
+        }
+      );
 
     document
       .querySelectorAll(
         "[data-section-link]"
       )
-      .forEach(btn => {
+      .forEach(
+        btn => {
 
-        btn.addEventListener(
-          "click",
-          () =>
-            showSection(
-              btn.dataset.sectionLink
-            )
-        );
-      });
+          btn.addEventListener(
+            "click",
+            () =>
+              showSection(
+                btn.dataset.sectionLink
+              )
+          );
+
+        }
+      );
 
     document
       .getElementById(
@@ -5075,9 +5337,10 @@ document.addEventListener(
             .getElementById(
               "sidebar"
             )
-            ?.classList.toggle(
+            .classList.toggle(
               "open"
             );
+
         }
       );
 
@@ -5132,6 +5395,7 @@ document.addEventListener(
             ?.classList.add(
               "hidden"
             );
+
         }
       );
 
@@ -5149,6 +5413,7 @@ document.addEventListener(
           ) {
             closeModal();
           }
+
         }
       );
 
@@ -5172,7 +5437,9 @@ document.addEventListener(
               .classList.add(
                 "hidden"
               );
+
           }
+
         }
       );
 
@@ -5194,9 +5461,9 @@ document.addEventListener(
         renderRequests
       );
 
-    /* ========================================================
-       MODAL DE VEÍCULOS
-       ======================================================== */
+    // ========================================================
+    // VEÍCULOS
+    // ========================================================
 
     document
       .getElementById(
@@ -5213,6 +5480,7 @@ document.addEventListener(
             ?.classList.remove(
               "hidden"
             );
+
         }
       );
 
@@ -5231,6 +5499,7 @@ document.addEventListener(
             ?.classList.add(
               "hidden"
             );
+
         }
       );
 
@@ -5268,26 +5537,18 @@ document.addEventListener(
             capacityLiters:
               parseFloat(
                 data.capacityLiters
-              ) || 0,
-
-            /*
-             * Se o formulário HTML ainda não
-             * possuir capacityKg, ficará null.
-             */
+              ),
 
             capacityKg:
-              data.capacityKg !==
-                undefined &&
-              data.capacityKg !== ""
-                ? parseFloat(
-                    data.capacityKg
-                  )
-                : null,
+              parseFloat(
+                data.capacityKg
+              ) || 0,
 
             minVolumeLiters:
               parseFloat(
                 data.minVolumeLiters
               ) || 0
+
           };
 
           vehicles.push(
@@ -5311,17 +5572,21 @@ document.addEventListener(
           toast(
             "Veículo cadastrado com sucesso."
           );
+
         }
       );
 
-    /* ========================================================
-       PÚBLICO / DASHBOARD
-       ======================================================== */
+    // ========================================================
+    // SISTEMA PÚBLICO
+    // ========================================================
 
     if (
       !checkPublicURL()
     ) {
+
       renderDashboard();
+
     }
+
   }
 );
