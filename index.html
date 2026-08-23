@@ -94,10 +94,10 @@
             <h1>Gestão de Solicitações</h1>
             <p>Acompanhe, altere o status e compartilhe o formulário público com a comunidade.</p>
           </div>
-         <div class="action-buttons">
-  <button class="share-btn" id="shareFormBtn" title="Copiar Link do Formulário Público">🔗</button>
-  <button class="primary-btn" id="novaSolicitacaoBtn2">+ Nova Solicitação</button>
-</div>
+          <div class="action-buttons">
+            <button class="share-btn" id="shareFormBtn" title="Copiar Link do Formulário Público">🔗</button>
+            <button class="primary-btn" id="novaSolicitacaoBtn2">+ Nova Solicitação</button>
+          </div>
         </div>
 
         <div class="panel">
@@ -121,7 +121,6 @@
       <section id="public-form-section" class="section">
         <div class="public-container">
           <div class="public-header">
-            <!-- 3 LOGOS ALINHADAS CONFORME MANUAL DE MARCA -->
             <div class="partner-logos-container">
               <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="partner-logo">
               <img src="Logo_recicle_maiss.png" alt="Recicle+ Trairi" class="partner-logo">
@@ -153,22 +152,6 @@
       </section>
 
       <!-- VEÍCULOS SECTION -->
-<section id="veiculos" class="section">
-  <div class="page-title">
-    <div>
-      <p class="eyebrow">FROTA</p>
-      <h1>Cadastro de Veículos</h1>
-      <p>Gerencie os veículos da associação e defina as capacidades de carga.</p>
-    </div>
-    <button class="primary-btn" id="novoVeiculoBtn">+ Novo Veículo</button>
-  </div>
-
-  <div class="panel">
-    <div id="vehiclesList" class="table-wrap"></div>
-  </div>
-</section>
-
-<!-- VEÍCULOS SECTION -->
       <section id="veiculos" class="section">
         <div class="page-title">
           <div>
@@ -223,6 +206,43 @@
     </div>
   </div>
 
+  <!-- MODAL DE DETALHES E EDIÇÃO DO CLIENTE -->
+  <div class="modal hidden" id="clientModal">
+    <div class="modal-card">
+      <button class="close-btn" id="closeClientModal" aria-label="Fechar">✕</button>
+      <p class="eyebrow">CADASTRO DO SOLICITANTE</p>
+      <h2 id="clientModalTitle">Detalhes do Cliente</h2>
+      <div id="clientModalContent"></div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CADASTRO DE VEÍCULO -->
+  <div class="modal hidden" id="vehicleModal">
+    <div class="modal-card">
+      <button class="close-btn" id="closeVehicleModal" aria-label="Fechar">✕</button>
+      <p class="eyebrow">FROTA</p>
+      <h2>Cadastrar Novo Veículo</h2>
+      <form id="vehicleForm" class="simplified-form">
+        <div class="form-group-block">
+          <label class="form-label">Nome/Modelo do Veículo *
+            <input name="name" required placeholder="Ex: Caminhão Baú ou Triciclo" class="big-input">
+          </label>
+          <label class="form-label">Placa / Identificador *
+            <input name="plate" required placeholder="Ex: TR-01" class="big-input">
+          </label>
+          <label class="form-label">Capacidade Máxima (Litros) *
+            <input name="capacityLiters" type="number" required placeholder="Ex: 5000" class="big-input">
+          </label>
+          <label class="form-label">Volume Mínimo para Saída (Litros) *
+            <small style="color:var(--muted);font-weight:400;">Ex: O caminhão só sai se houver acúmulo acima de 1000 Litros.</small>
+            <input name="minVolumeLiters" type="number" required placeholder="Ex: 1000" class="big-input">
+          </label>
+        </div>
+        <button class="primary-btn submit-btn" type="submit">SALVAR VEÍCULO</button>
+      </form>
+    </div>
+  </div>
+
   <div id="toast" class="toast"></div>
 
   <!-- Leaflet JS -->
@@ -230,30 +250,3 @@
   <script src="app.js"></script>
 </body>
 </html>
-
-<!-- MODAL DE CADASTRO DE VEÍCULO -->
-<div class="modal hidden" id="vehicleModal">
-  <div class="modal-card">
-    <button class="close-btn" id="closeVehicleModal" aria-label="Fechar">✕</button>
-    <p class="eyebrow">FROTA</p>
-    <h2>Cadastrar Novo Veículo</h2>
-    <form id="vehicleForm" class="simplified-form">
-      <div class="form-group-block">
-        <label class="form-label">Nome/Modelo do Veículo *
-          <input name="name" required placeholder="Ex: Caminhão Baú ou Triciclo" class="big-input">
-        </label>
-        <label class="form-label">Placa / Identificador *
-          <input name="plate" required placeholder="Ex: TR-01" class="big-input">
-        </label>
-        <label class="form-label">Capacidade Máxima (Litros) *
-          <input name="capacityLiters" type="number" required placeholder="Ex: 5000" class="big-input">
-        </label>
-        <label class="form-label">Volume Mínimo para Saída (Litros) *
-          <small style="color:var(--muted);font-weight:400;">Ex: O caminhão só sai se houver acúmulo acima de 1000 Litros.</small>
-          <input name="minVolumeLiters" type="number" required placeholder="Ex: 1000" class="big-input">
-        </label>
-      </div>
-      <button class="primary-btn submit-btn" type="submit">SALVAR VEÍCULO</button>
-    </form>
-  </div>
-</div>
