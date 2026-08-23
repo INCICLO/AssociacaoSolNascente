@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Sistema de Gestão de Coletas - Inciclo / Associação Sol Nascente / Recicle+ Trairi">
   <title>Sistema de Gestão de Coletas de Resíduos</title>
-  
+
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Qanelas:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700;800&display=swap" rel="stylesheet">
+
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 </head>
@@ -48,7 +48,13 @@
             <h1>Painel de Controle</h1>
             <p>Acompanhamento das solicitações e gerenciamento de operações de coleta.</p>
           </div>
-          <button class="primary-btn" id="novaSolicitacaoBtn">+ Nova Solicitação</button>
+          <div class="action-buttons" style="display:flex; gap:10px;">
+            <button class="secondary-btn" id="exportBackupBtn" title="Exportar Backup dos Dados">💾 Exportar</button>
+            <label class="secondary-btn" style="cursor:pointer;" title="Importar Backup dos Dados">
+              📂 Importar <input type="file" id="importBackupInput" accept=".json" style="display:none;">
+            </label>
+            <button class="primary-btn" id="novaSolicitacaoBtn">+ Nova Solicitação</button>
+          </div>
         </div>
 
         <div class="cards">
@@ -95,7 +101,7 @@
             <p>Acompanhe, altere o status e compartilhe o formulário público com a comunidade.</p>
           </div>
           <div class="action-buttons">
-            <button class="share-btn" id="shareFormBtn" title="Copiar Link do Formulário Público">🔗</button>
+            <button class="share-btn" id="shareFormBtn" title="Copiar Link do Formulário Público">🔗 Copiar Link Público</button>
             <button class="primary-btn" id="novaSolicitacaoBtn2">+ Nova Solicitação</button>
           </div>
         </div>
@@ -175,10 +181,8 @@
             <h1>Rotas & Frota do Dia</h1>
             <p>Gerenciamento automático de itinerários e alocação de veículos por capacidade.</p>
           </div>
-          <button class="primary-btn" id="dispatchRouteBtn">🚀 Despachar Rota de Hoje</button>
         </div>
 
-        <!-- Container dinâmico onde as rotas separadas por veículo serão renderizadas -->
         <div id="routesByVehicleContainer"></div>
       </section>
 
@@ -232,6 +236,9 @@
           </label>
           <label class="form-label">Capacidade Máxima (Litros) *
             <input name="capacityLiters" type="number" required placeholder="Ex: 5000" class="big-input">
+          </label>
+          <label class="form-label">Capacidade Máxima (Kg)
+            <input name="capacityKg" type="number" placeholder="Ex: 1500" class="big-input">
           </label>
           <label class="form-label">Volume Mínimo para Saída (Litros) *
             <small style="color:var(--muted);font-weight:400;">Ex: O caminhão só sai se houver acúmulo acima de 1000 Litros.</small>
