@@ -228,6 +228,16 @@
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="app.js"></script>
+
+  <!-- MODAL DE DETALHES E EDIÇÃO DO CLIENTE -->
+  <div class="modal hidden" id="clientModal">
+    <div class="modal-card">
+      <button class="close-btn" id="closeClientModal" aria-label="Fechar">✕</button>
+      <p class="eyebrow">CADASTRO DO SOLICITANTE</p>
+      <h2 id="clientModalTitle">Detalhes do Cliente</h2>
+      <div id="clientModalContent"></div>
+    </div>
+  </div>
 </body>
 </html>
 
