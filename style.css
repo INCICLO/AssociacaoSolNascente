@@ -5,7 +5,7 @@
    - Laranja Destaque: #eb5b2b
    - Azul Claro / Fundo: #e2eaf8
    - Verde Azulado (Teal): #085157
-   - Fonte Institucional: Qanelas, Segoe UI, sans-serif
+   - Fonte Institucional: Segoe UI, Arial, sans-serif
    ========================================================================== */
 
 :root {
@@ -30,7 +30,7 @@
 
 body {
   margin: 0;
-  font-family: "Qanelas", "Segoe UI", Arial, sans-serif;
+  font-family: "Segoe UI", Arial, sans-serif;
   background: var(--background);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -163,6 +163,12 @@ nav {
   margin-bottom: 28px;
 }
 
+.action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .eyebrow {
   color: var(--orange);
   font-size: 11px;
@@ -256,11 +262,11 @@ td strong { color: var(--navy); }
   letter-spacing: 0.5px;
 }
 
-.status-NOVA { background: #fff0ea; color: var(--orange-dark); }
-.status-EM-ANÁLISE { background: #fff6dc; color: var(--warning); }
-.status-AGENDADA { background: #e2eaf8; color: var(--navy); }
-.status-EM-ROTA { background: #e8f5ee; color: var(--success); }
-.status-COLETADA, .status-FINALIZADA { background: #e8f5ee; color: var(--success); }
+.status-nova { background: #fff0ea; color: var(--orange-dark); }
+.status-em-analise { background: #fff6dc; color: var(--warning); }
+.status-agendada { background: #e2eaf8; color: var(--navy); }
+.status-em-rota { background: #e8f5ee; color: var(--success); }
+.status-coletada, .status-finalizada { background: #e8f5ee; color: var(--success); }
 
 .empty-state {
   background: white; border: 1px dashed var(--border); border-radius: 12px;
@@ -714,7 +720,6 @@ body.public-mode .content {
   }
 }
 
-/* AJUSTES DE NAVEGAÇÃO E TABELA DE VEÍCULOS */
 #vehiclesList table button {
   padding: 6px 12px;
   font-size: 12px;
