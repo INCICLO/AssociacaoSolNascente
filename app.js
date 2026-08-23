@@ -545,7 +545,12 @@ function tableHTML(data, withActions = true) {
     <tbody>
       ${data.map(r => `<tr>
         <td><strong>${escapeHTML(r.id)}</strong></td>
-        <td>${escapeHTML(r.name)}<br><small>Tel: ${escapeHTML(r.phone)}</small></td>
+        <td>
+          <a href="javascript:void(0)" onclick="openClientDetails('${escapeHTML(r.id)}')" style="color:var(--navy);font-weight:bold;text-decoration:underline;">
+            ${escapeHTML(r.name)}
+          </a><br>
+          <small>Tel: ${escapeHTML(r.phone)}</small>
+        </td>
         <td>
           <strong>${escapeHTML(r.type)}${r.customLocationName ? ` (${escapeHTML(r.customLocationName)})` : ''}</strong><br>
           <small>${r.latitude && r.longitude ? `<a href="https://maps.google.com/?q=${r.latitude},${r.longitude}" target="_blank" style="color:var(--orange);font-weight:bold;text-decoration:none;">Visualizar no Mapa</a>` : 'Sem coordenadas'}</small>
@@ -553,9 +558,15 @@ function tableHTML(data, withActions = true) {
         <td>${escapeHTML(r.materials)}<br><small><strong>Total:</strong> ${escapeHTML(r.quantity || '-')} ${escapeHTML(r.unit || '')}</small></td>
         <td><small>${escapeHTML(r.frequency || 'Não informada')}</small></td>
         <td>${statusBadge(r.status)}</td>
-        ${withActions ? `<td><select class="inline-status" data-id="${escapeHTML(r.id)}">
-          ${["NOVA","EM ANÁLISE","AGENDADA","EM ROTA","COLETADA","FINALIZADA"].map(s => `<option ${s===r.status ? "selected":""}>${s}</option>`).join("")}
-        </select></td>` : ""}
+        ${withActions ? `<td>
+          <div style="display:flex;gap:4px;align-items:center;">
+            <select class="inline-status" data-id="${escapeHTML(r.id)}">
+              ${["NOVA","EM ANÁLISE","AGENDADA","EM ROTA","COLETADA","FINALIZADA"].map(s => `<option ${s===r.status ? "selected":""}>${s}</option>`).join("")}
+            </select>
+            <button class="btn-icon" onclick="openClientDetails('${escapeHTML(r.id)}')" title="Ver Detalhes">🔍</button>
+            <button class="btn-icon delete" onclick="deleteClient('${escapeHTML(r.id)}')" title="Excluir">🗑️</button>
+          </div>
+        </td>` : ""}
       </tr>`).join("")}
     </tbody>
   </table>`;
@@ -622,7 +633,7 @@ function deleteVehicle(id) {
   toast("Veículo removido com sucesso.");
 }
 
-// 🧮 FUNÇÃO DE CONVERSÃO INTELIGENTE DE UNIDADES/MATERIAIS PARA LITROS
+// CONVERSÃO INTELIGENTE PARA LITROS
 function convertToLiters(quantityStr, unitStr, materialsStr = "") {
   const qty = parseFloat(quantityStr) || 0;
   if (qty <= 0) return 0;
@@ -630,27 +641,18 @@ function convertToLiters(quantityStr, unitStr, materialsStr = "") {
   const unit = (unitStr || "").toLowerCase();
   const mat = (materialsStr || "").toLowerCase();
 
-  // 1. Unidades volumétricas diretas
-  if (unit.includes("saco")) return qty * 100;      // Sacos de 100 Litros
-  if (unit.includes("bombona")) return qty * 200;   // Bombona padrão 200L
-  if (unit.includes("bigbag")) return qty * 1000;   // BigBag padrão 1000L
-  if (unit.includes("caixa")) return qty * 50;      // Caixa média 50L
+  if (unit.includes("saco")) return qty * 100;
+  if (unit.includes("bombona")) return qty * 200;
+  if (unit.includes("bigbag")) return qty * 1000;
+  if (unit.includes("caixa")) return qty * 50;
 
-  // 2. Conversão de Kg para Litros via Densidade Aparente Média
   if (unit.includes("kg")) {
-    let densityKgPerL = 0.15; // Densidade média padrão (0,15 kg/L)
-
-    if (mat.includes("plástico") || mat.includes("pet")) {
-      densityKgPerL = 0.05; // Plástico é leve e ocupa muito espaço
-    } else if (mat.includes("papel") || mat.includes("papelão")) {
-      densityKgPerL = 0.10;
-    } else if (mat.includes("metal") || mat.includes("latas")) {
-      densityKgPerL = 0.15;
-    } else if (mat.includes("eletrônicos")) {
-      densityKgPerL = 0.25;
-    } else if (mat.includes("vidro")) {
-      densityKgPerL = 0.35; // Vidro é pesado
-    }
+    let densityKgPerL = 0.15;
+    if (mat.includes("plástico") || mat.includes("pet")) densityKgPerL = 0.05;
+    else if (mat.includes("papel") || mat.includes("papelão")) densityKgPerL = 0.10;
+    else if (mat.includes("metal") || mat.includes("latas")) densityKgPerL = 0.15;
+    else if (mat.includes("eletrônicos")) densityKgPerL = 0.25;
+    else if (mat.includes("vidro")) densityKgPerL = 0.35;
 
     return qty / densityKgPerL;
   }
@@ -658,7 +660,7 @@ function convertToLiters(quantityStr, unitStr, materialsStr = "") {
   return qty;
 }
 
-// 🚚 ROTEIRIZAÇÃO INTELIGENTE COM FRACIONAMENTO E VEÍCULO DE APOIO
+// ROTEIRIZAÇÃO INTELIGENTE POR VEÍCULO COM REGRA DE FALLBACK E DIVISÃO DE CARGA
 function renderRoutes() {
   const container = document.getElementById("routesByVehicleContainer");
   if (!container) return;
@@ -668,7 +670,6 @@ function renderRoutes() {
   const currentDayName = weekdays[today.getDay()];
   const formattedTodayDate = today.toLocaleDateString('pt-BR');
 
-  // Filtra as solicitações agendadas para o dia
   const todayPoints = requests.filter(r => {
     if (r.status !== "AGENDADA") return false;
     if (!r.frequency) return false;
@@ -687,10 +688,8 @@ function renderRoutes() {
     return;
   }
 
-  // Ordena os veículos do maior para o menor
   const sortedVehicles = [...vehicles].sort((a, b) => b.capacityLiters - a.capacityLiters);
 
-  // Mapeia os pontos com seus volumes convertidos
   let pendingItems = todayPoints.map(p => ({
     ...p,
     totalLiters: convertToLiters(p.quantity, p.unit, p.materials),
@@ -702,16 +701,13 @@ function renderRoutes() {
     vehicleAllocations[v.id] = { vehicle: v, trips: [] };
   });
 
-  // Aloca as cargas entre os veículos cadastrados
   sortedVehicles.forEach(vehicle => {
     const minVol = parseFloat(vehicle.minVolumeLiters) || 0;
     const maxCap = parseFloat(vehicle.capacityLiters) || 0;
 
-    // Filtra pontos ainda pendentes
     let pointsToEvaluate = pendingItems.filter(item => item.remainingLiters > 0);
     const totalPendingLiters = pointsToEvaluate.reduce((acc, i) => acc + i.remainingLiters, 0);
 
-    // Se o volume total pendente for menor que o mínimo do caminhão grande, pula para o veículo inferior
     if (minVol > 0 && totalPendingLiters < minVol) {
       return;
     }
@@ -723,15 +719,13 @@ function renderRoutes() {
         const spaceLeft = maxCap - currentTrip.usedLiters;
 
         if (spaceLeft <= 0) {
-          // Fecha a viagem atual e abre uma viagem de apoio no mesmo veículo (se aplicável)
           vehicleAllocations[vehicle.id].trips.push(currentTrip);
           currentTrip = { tripNumber: vehicleAllocations[vehicle.id].trips.length + 1, items: [], usedLiters: 0 };
         }
 
         const currentSpace = maxCap - currentTrip.usedLiters;
-        if (currentSpace <= 0) break; // Passa para o próximo veículo/viagem
+        if (currentSpace <= 0) break;
 
-        // Calcula quanto deste item cabe nesta viagem/veículo
         const allocatedLiters = Math.min(item.remainingLiters, currentSpace);
         
         currentTrip.items.push({
@@ -743,7 +737,6 @@ function renderRoutes() {
         currentTrip.usedLiters += allocatedLiters;
         item.remainingLiters -= allocatedLiters;
 
-        // Se o veículo estiver cheio, encerra o loop desta viagem
         if (currentTrip.usedLiters >= maxCap) {
           vehicleAllocations[vehicle.id].trips.push(currentTrip);
           currentTrip = { tripNumber: vehicleAllocations[vehicle.id].trips.length + 1, items: [], usedLiters: 0 };
@@ -756,7 +749,6 @@ function renderRoutes() {
     }
   });
 
-  // GERAÇÃO DO HTML
   let routeOutputHTML = "";
 
   sortedVehicles.forEach(vehicle => {
@@ -801,7 +793,6 @@ function renderRoutes() {
     `;
   });
 
-  // Exibe itens excedentes (se houver)
   const remainingUnassigned = pendingItems.filter(i => i.remainingLiters > 0);
   if (remainingUnassigned.length) {
     routeOutputHTML += `
@@ -820,24 +811,179 @@ function renderRoutes() {
   container.innerHTML = routeOutputHTML;
 }
 
+// CLIENTES E DETALHAMENTO DE FORMULÁRIO COMPLETO
 function renderClients() {
-  const unique = [];
-  const seen = new Set();
+  const uniqueMap = new Map();
   requests.forEach(r => {
-    const key = `${r.name}|${r.phone}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      unique.push(r);
+    const key = `${r.name.toLowerCase().trim()}|${r.phone.trim()}`;
+    if (!uniqueMap.has(key)) {
+      uniqueMap.set(key, r);
     }
   });
-  document.getElementById("clientsList").innerHTML = unique.length
-    ? unique.map(r => `<article class="client-card">
-        <h3>${escapeHTML(r.name)}</h3>
-        <p>Telefone: ${escapeHTML(r.phone)}</p>
-        <p>Tipo: ${escapeHTML(r.type)}${r.customLocationName ? ` - ${escapeHTML(r.customLocationName)}` : ''}</p>
-        <p>Frequência: ${escapeHTML(r.frequency || 'Não informada')}</p>
-      </article>`).join("")
+
+  const uniqueClients = Array.from(uniqueMap.values());
+  const container = document.getElementById("clientsList");
+  if (!container) return;
+
+  container.innerHTML = uniqueClients.length
+    ? uniqueClients.map(r => `
+        <article class="client-card" onclick="openClientDetails('${escapeHTML(r.id)}')">
+          <div class="client-card-header">
+            <h3>${escapeHTML(r.name)}</h3>
+            <div class="client-card-actions" onclick="event.stopPropagation()">
+              <button class="btn-icon" onclick="editClient('${escapeHTML(r.id)}')" title="Editar Cadastro">✏️ Edit</button>
+              <button class="btn-icon delete" onclick="deleteClient('${escapeHTML(r.id)}')" title="Excluir">🗑️ Excluir</button>
+            </div>
+          </div>
+          <p><strong>Telefone:</strong> ${escapeHTML(r.phone)}</p>
+          <p><strong>Local:</strong> ${escapeHTML(r.type)} ${r.customLocationName ? `(${escapeHTML(r.customLocationName)})` : ''}</p>
+          <p><strong>Frequência:</strong> ${escapeHTML(r.frequency || 'Não informada')}</p>
+          <p><strong>Última Solicitação:</strong> ${escapeHTML(r.id)}</p>
+        </article>
+      `).join("")
     : `<div class="empty-state"><h2>Nenhum cliente cadastrado</h2></div>`;
+}
+
+// ABRIR DETALHES DO CLIENTE NO MODAL
+function openClientDetails(id) {
+  const req = requests.find(r => r.id === id);
+  if (!req) return;
+
+  const modal = document.getElementById("clientModal");
+  const title = document.getElementById("clientModalTitle");
+  const content = document.getElementById("clientModalContent");
+
+  title.textContent = `Ficha Cadastral — ${req.name}`;
+
+  const estLiters = Math.round(convertToLiters(req.quantity, req.unit, req.materials));
+
+  content.innerHTML = `
+    <div class="detail-grid">
+      <div class="detail-item">
+        <span>Código do Protocolo</span>
+        <strong>${escapeHTML(req.id)}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Status Atual</span>
+        <strong>${statusBadge(req.status)}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Nome Completo</span>
+        <strong>${escapeHTML(req.name)}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Telefone WhatsApp</span>
+        <strong>${escapeHTML(req.phone)}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Tipo de Localidade</span>
+        <strong>${escapeHTML(req.type)} ${req.customLocationName ? `— ${escapeHTML(req.customLocationName)}` : ''}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Frequência Agendada</span>
+        <strong>${escapeHTML(req.frequency || 'Não informada')}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Materiais Recicláveis</span>
+        <strong>${escapeHTML(req.materials)}</strong>
+      </div>
+      <div class="detail-item">
+        <span>Carga Estimada Declarada</span>
+        <strong>${escapeHTML(req.quantity)} ${escapeHTML(req.unit)} (≈ ${estLiters} Litros)</strong>
+      </div>
+      <div class="detail-item" style="grid-column: span 2;">
+        <span>Localização Geográfica</span>
+        <strong>
+          ${req.latitude && req.longitude 
+            ? `<a href="https://maps.google.com/?q=${req.latitude},${req.longitude}" target="_blank" style="color:var(--orange);font-weight:bold;">Lat: ${req.latitude} | Lng: ${req.longitude} (Abrir Google Maps 🔗)</a>` 
+            : 'Coordenadas não registradas'}
+        </strong>
+      </div>
+      <div class="detail-item" style="grid-column: span 2;">
+        <span>Observações e Referências</span>
+        <strong>${escapeHTML(req.notes || 'Nenhuma observação informada.')}</strong>
+      </div>
+    </div>
+    <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+      <button class="secondary-btn" onclick="editClient('${escapeHTML(req.id)}')">✏️ Editar Cadastro</button>
+      <button class="secondary-btn" style="color: #c92a2a; border-color: #f8b4b4;" onclick="deleteClient('${escapeHTML(req.id)}')">🗑️ Excluir Registro</button>
+    </div>
+  `;
+
+  modal.classList.remove("hidden");
+}
+
+// FUNÇÃO DE EDIÇÃO DE CADASTRO DE CLIENTE
+function editClient(id) {
+  const req = requests.find(r => r.id === id);
+  if (!req) return;
+
+  document.getElementById("clientModal")?.classList.add("hidden");
+
+  const container = document.getElementById("modalFormContainer");
+  container.innerHTML = buildFormHTML("editModalForm");
+  initFormEvents("editModalForm");
+
+  const form = document.getElementById("editModalForm");
+  
+  // Preenche os campos existentes com os dados salvos
+  form.querySelector('input[name="name"]').value = req.name;
+  form.querySelector('input[name="phone"]').value = req.phone;
+  form.querySelector('.type-select').value = req.type;
+
+  if (req.type !== "Residência") {
+    const customWrap = form.querySelector('.custom-location-wrap');
+    customWrap.classList.remove('hidden');
+    form.querySelector('input[name="customLocationName"]').value = req.customLocationName || '';
+  }
+
+  form.querySelector('input[name="quantity"]').value = req.quantity;
+  form.querySelector('select[name="unit"]').value = req.unit;
+  form.querySelector('textarea[name="notes"]').value = req.notes || '';
+
+  form.querySelector('input[name="latitude"]').value = req.latitude || '';
+  form.querySelector('input[name="longitude"]').value = req.longitude || '';
+
+  // Substitui a ação padrão de envio para atualizar em vez de criar novo registro
+  form.onsubmit = e => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    let checkedMaterials = [...form.querySelectorAll('input[name="materials_list"]:checked')].map(c => c.value);
+    if (checkedMaterials.length === 0) checkedMaterials = [req.materials];
+
+    req.name = data.name;
+    req.phone = data.phone;
+    req.type = data.type;
+    req.customLocationName = data.type !== 'Residência' ? data.customLocationName : '';
+    req.quantity = data.quantity;
+    req.unit = data.unit;
+    req.notes = data.notes;
+    req.materials = checkedMaterials.join(', ');
+
+    save();
+    closeModal();
+    renderRequests();
+    renderClients();
+    renderDashboard();
+    toast("Cadastro do cliente atualizado com sucesso!");
+  };
+
+  document.getElementById("requestModal").classList.remove("hidden");
+}
+
+// EXCLUIR CADASTRO
+function deleteClient(id) {
+  if (confirm(`Tem certeza que deseja excluir o cadastro/solicitação ${id}?`)) {
+    requests = requests.filter(r => r.id !== id);
+    save();
+    document.getElementById("clientModal")?.classList.add("hidden");
+    renderRequests();
+    renderClients();
+    renderDashboard();
+    toast("Registro excluído com sucesso.");
+  }
 }
 
 function formatPhone(value) {
@@ -864,9 +1010,18 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("novaSolicitacaoBtn2")?.addEventListener("click", openModal);
   document.getElementById("shareFormBtn")?.addEventListener("click", copyPublicLink);
   document.getElementById("closeModal")?.addEventListener("click", closeModal);
+  document.getElementById("closeClientModal")?.addEventListener("click", () => {
+    document.getElementById("clientModal")?.classList.add("hidden");
+  });
 
   document.getElementById("requestModal")?.addEventListener("click", e => {
     if (e.target.id === "requestModal") closeModal();
+  });
+
+  document.getElementById("clientModal")?.addEventListener("click", e => {
+    if (e.target.id === "clientModal") {
+      document.getElementById("clientModal").classList.add("hidden");
+    }
   });
 
   document.getElementById("searchInput")?.addEventListener("input", renderRequests);
@@ -906,4 +1061,5 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!checkPublicURL()) {
     renderDashboard();
   }
+});
 });
