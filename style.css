@@ -268,22 +268,76 @@ td strong { color: var(--navy); }
 }
 .empty-state h2 { margin-bottom: 6px; color: var(--navy); }
 
-.route-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
-.route-point {
-  display: flex; align-items: center; gap: 12px; padding: 14px 0;
-  border-bottom: 1px solid var(--border); cursor: pointer;
-}
-.route-point:last-child { border-bottom: 0; }
-.route-point input { width: auto; cursor: pointer; }
-.route-point strong { color: var(--navy); display: block; }
-.route-point small { color: var(--muted); }
-
+/* CARDS E DETALHAMENTO DE CLIENTES */
 .client-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.client-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }
-.client-card h3 { color: var(--navy); margin: 0 0 6px; font-size: 16px; }
-.client-card p { font-size: 13px; margin-top: 4px; color: var(--muted); }
+.client-card { 
+  background: white; 
+  border: 1px solid var(--border); 
+  border-radius: 12px; 
+  padding: 20px; 
+  box-shadow: var(--shadow); 
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.client-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--navy);
+  box-shadow: 0 8px 24px rgba(36, 42, 85, 0.12);
+}
+.client-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.client-card-actions {
+  display: flex;
+  gap: 6px;
+}
 
-/* MODAL INSTITUCIONAL */
+.btn-icon {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.btn-icon:hover { background: var(--light-blue); }
+.btn-icon.delete:hover {
+  background: #fde8e8;
+  color: #c92a2a;
+  border-color: #f8b4b4;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+.detail-item {
+  background: var(--background);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.detail-item span {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.detail-item strong {
+  color: var(--navy);
+  font-size: 14px;
+}
+
+/* MODAL INSTITUCIONAL E REGRAS DE OCULTAÇÃO ESTREITAS */
 .modal {
   position: fixed; inset: 0; background: rgba(36, 42, 85, 0.6); z-index: 1000;
   display: grid; place-items: center; padding: 20px;
@@ -294,6 +348,7 @@ td strong { color: var(--navy); }
   display: none !important; 
   pointer-events: none !important;
   visibility: hidden !important;
+  opacity: 0 !important;
 }
 
 .modal-card {
@@ -587,8 +642,8 @@ body.public-mode .content {
 /* REGRAS RESPONSIVAS */
 @media (max-width: 1000px) {
   .cards { grid-template-columns: repeat(2, 1fr); }
-  .route-layout { grid-template-columns: 1fr; }
   .client-grid { grid-template-columns: repeat(2, 1fr); }
+  .detail-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 720px) {
@@ -657,31 +712,6 @@ body.public-mode .content {
   .days-grid {
     grid-template-columns: repeat(3, 1fr);
   }
-}
-
-/* ESTILOS DE AUTOMAÇÃO DE FROTA E ROTAS */
-.auto-route-card {
-  background: var(--light-blue);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
-  margin-bottom: 12px;
-}
-
-.vehicle-badge {
-  color: var(--navy);
-  font-size: 15px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.route-summary ol li {
-  font-size: 13px;
-  color: var(--navy);
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 4px;
 }
 
 /* AJUSTES DE NAVEGAÇÃO E TABELA DE VEÍCULOS */
