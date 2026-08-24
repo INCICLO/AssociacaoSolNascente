@@ -1,13 +1,3 @@
-/* ==========================================================================
-   ESTILOS GERAIS E IDENTIDADE VISUAL - INCICLO / SOL NASCENTE / RECICLE+
-   Manual de Marca Inciclo:
-   - Azul Escuro Principal: #242a55
-   - Laranja Destaque: #eb5b2b
-   - Azul Claro / Fundo: #e2eaf8
-   - Verde Azulado (Teal): #085157
-   - Fonte Institucional: Segoe UI, Arial, sans-serif
-   ========================================================================== */
-
 :root {
   --navy: #242a55;
   --orange: #eb5b2b;
@@ -121,7 +111,7 @@ th { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: upp
 .status-em-rota { background: #e8f5ee; color: var(--success); }
 .status-coletada, .status-finalizada { background: #e8f5ee; color: var(--success); }
 
-/* ESTILOS DA AGENDA / CALENDÁRIO */
+/* AGENDA / CALENDÁRIO */
 .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; }
 .calendar-day-head { font-weight: 800; font-size: 12px; color: var(--muted); padding: 8px 0; }
@@ -133,15 +123,27 @@ th { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: upp
 .calendar-date-num { font-weight: 800; font-size: 12px; color: var(--navy); margin-bottom: 4px; }
 .calendar-badge { background: var(--navy); color: white; border-radius: 12px; font-size: 10px; padding: 2px 6px; display: inline-block; }
 
-/* MODAL & DRIVER MODE */
+/* REGRAS RÍGIDAS DE OCULTAÇÃO DE MODAL (IMPEDE BLOQUEIO DE CLIQUES) */
+.modal {
+  position: fixed; inset: 0; background: rgba(36, 42, 85, 0.6); z-index: 1000;
+  display: grid; place-items: center; padding: 20px;
+}
+
+.modal.hidden {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  z-index: -9999 !important;
+}
+
+.modal-card { position: relative; background: white; width: min(780px, 100%); max-height: 90vh; overflow-y: auto; border-radius: 14px; padding: 36px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.close-btn { position: absolute; right: 20px; top: 18px; border: 0; background: transparent; color: var(--muted); font-size: 26px; cursor: pointer; }
+
+/* DRIVER MODE */
 body.driver-mode .topbar, body.driver-mode .sidebar { display: none !important; }
 body.driver-mode .layout { display: block !important; }
 body.driver-mode .content { padding: 16px !important; }
-
-.modal { position: fixed; inset: 0; background: rgba(36, 42, 85, 0.6); z-index: 1000; display: grid; place-items: center; padding: 20px; }
-.modal.hidden { display: none !important; }
-.modal-card { position: relative; background: white; width: min(780px, 100%); max-height: 90vh; overflow-y: auto; border-radius: 14px; padding: 36px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-.close-btn { position: absolute; right: 20px; top: 18px; border: 0; background: transparent; color: var(--muted); font-size: 26px; cursor: pointer; }
 
 .toast { position: fixed; right: 25px; bottom: 25px; background: var(--navy); color: white; padding: 14px 20px; border-radius: 8px; transform: translateY(120px); opacity: 0; transition: all 0.25s ease; z-index: 2000; }
 .toast.show { transform: translateY(0); opacity: 1; }
@@ -158,8 +160,4 @@ body.driver-mode .content { padding: 16px !important; }
   .cards { grid-template-columns: 1fr 1fr; gap: 10px; }
   .calendar-grid { grid-template-columns: repeat(7, minmax(40px, 1fr)); }
   .calendar-cell { min-height: 60px; padding: 4px; }
-}
-#vehiclesList table button {
-  padding: 6px 12px;
-  font-size: 12px;
 }
