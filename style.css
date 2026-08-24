@@ -96,9 +96,6 @@ p { color: var(--muted); margin: 0; font-size: 13px; }
 .panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
 .filters { display: grid; grid-template-columns: 1fr 200px; gap: 12px; margin-bottom: 16px; }
 
-.dashboard-charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
-.chart-container-box { position: relative; height: 220px; width: 100%; }
-
 input, select, textarea {
   width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; outline: none; background: white; color: var(--text); font-size: 14px;
 }
@@ -117,34 +114,21 @@ th { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: upp
 .status-em-rota { background: #e8f5ee; color: var(--success); }
 .status-coletada, .status-finalizada { background: #e8f5ee; color: var(--success); }
 
-/* AGENDA E CLIENTES */
-.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
-.calendar-day-head { font-weight: 800; font-size: 11px; color: var(--muted); padding: 6px 0; }
-.calendar-cell { background: var(--background); border: 1px solid var(--border); border-radius: 6px; min-height: 70px; padding: 6px; text-align: left; }
-.calendar-date-num { font-weight: 800; font-size: 11px; color: var(--navy); }
-.calendar-badge { background: var(--navy); color: white; border-radius: 10px; font-size: 10px; padding: 2px 4px; display: inline-block; margin-top: 4px; }
+/* ESTILOS DO FORMULÁRIO E MAPA */
+.form-group-block { background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+.form-block-title { font-weight: 800; color: var(--navy); font-size: 14px; text-transform: uppercase; margin-bottom: 4px; display: block; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.materials-grid, .days-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.material-checkbox, .day-checkbox { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; cursor: pointer; }
 
-.client-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-.client-card { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 16px; box-shadow: var(--shadow); }
+.hidden { display: none !important; }
+.map-container { height: 280px; width: 100%; border-radius: 8px; border: 1px solid var(--border); margin-top: 6px; }
 
-/* FORMULÁRIO PÚBLICO */
-.public-container { max-width: 760px; margin: 0 auto; padding: 20px 12px 60px; }
-.public-header { text-align: center; background: white; padding: 24px 16px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; box-shadow: var(--shadow); }
-.partner-logos-container { display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 16px; flex-wrap: wrap; }
-.partner-logo { height: 45px; width: auto; object-fit: contain; }
-.public-card { background: white; border-radius: 12px; padding: 24px 18px; border: 1px solid var(--border); box-shadow: var(--shadow); }
-
-/* MODAIS */
+/* MODAIS E TELAS ESPECIAIS */
 .modal { position: fixed; inset: 0; background: rgba(36, 42, 85, 0.6); z-index: 1000; display: grid; place-items: center; padding: 12px; }
 .modal.hidden { display: none !important; pointer-events: none !important; visibility: hidden !important; opacity: 0 !important; z-index: -9999 !important; }
-.modal-card { position: relative; background: white; width: min(720px, 100%); max-height: 90vh; overflow-y: auto; border-radius: 12px; padding: 24px 18px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+.modal-card { position: relative; background: white; width: min(760px, 100%); max-height: 90vh; overflow-y: auto; border-radius: 12px; padding: 24px 18px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
 .close-btn { position: absolute; right: 16px; top: 14px; border: 0; background: transparent; color: var(--muted); font-size: 24px; cursor: pointer; }
 
-.map-container { height: 260px; width: 100%; border-radius: 8px; border: 1px solid var(--border); margin-top: 6px; }
-.simplified-form { display: flex; flex-direction: column; gap: 16px; }
-.form-group-block { background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-
-/* MODOS ESPECIAIS (FORM PÚBLICO E APP MOTORISTA) */
 body.public-mode .topbar, body.public-mode .sidebar,
 body.driver-mode .topbar, body.driver-mode .sidebar { display: none !important; }
 body.public-mode .layout, body.driver-mode .layout { display: block !important; }
@@ -152,6 +136,10 @@ body.public-mode .content, body.driver-mode .content { padding: 12px !important;
 
 .toast { position: fixed; right: 20px; bottom: 20px; background: var(--navy); color: white; padding: 12px 18px; border-radius: 8px; transform: translateY(100px); opacity: 0; transition: all 0.25s ease; z-index: 2000; font-size: 13px; font-weight: 600; }
 .toast.show { transform: translateY(0); opacity: 1; }
+
+.client-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.client-card { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 16px; box-shadow: var(--shadow); cursor: pointer; }
+.client-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 
 /* RESPONSIVIDADE PARA SMARTPHONES */
 @media (max-width: 720px) {
@@ -163,6 +151,4 @@ body.public-mode .content, body.driver-mode .content { padding: 12px !important;
   .filters { grid-template-columns: 1fr; }
   .page-title { flex-direction: column; align-items: flex-start; }
   .action-buttons { width: 100%; justify-content: flex-start; }
-  .calendar-grid { grid-template-columns: repeat(7, minmax(36px, 1fr)); }
-  .calendar-cell { min-height: 50px; padding: 4px; }
 }
