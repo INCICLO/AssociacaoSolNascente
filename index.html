@@ -11,8 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Leaflet CSS -->
+  <!-- Leaflet CSS & Chart.js -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -32,10 +33,11 @@
       <nav>
         <button class="nav-item active" data-section="dashboard"><span>Dashboard</span></button>
         <button class="nav-item" data-section="solicitacoes"><span>Solicitações</span></button>
-        <button class="nav-item" data-section="coletas"><span>Coletas</span></button>
-        <button class="nav-item" data-section="rotas"><span>Rotas</span></button>
+        <button class="nav-item" data-section="agenda"><span>Agenda / Calendário</span></button>
+        <button class="nav-item" data-section="rotas"><span>Rotas de Hoje</span></button>
         <button class="nav-item" data-section="clientes"><span>Clientes</span></button>
         <button class="nav-item" data-section="veiculos"><span>Veículos</span></button>
+        <button class="nav-item" data-section="driver-view" id="driverNavBtn" style="border-top:1px solid var(--border); margin-top:10px;"><span>🚚 Tela do Motorista</span></button>
       </nav>
     </aside>
 
@@ -48,9 +50,9 @@
             <h1>Painel de Controle</h1>
             <p>Acompanhamento das solicitações e gerenciamento de operações de coleta.</p>
           </div>
-          <div class="action-buttons" style="display:flex; gap:10px;">
-            <button class="secondary-btn" id="exportBackupBtn" title="Exportar Backup dos Dados">💾 Exportar</button>
-            <label class="secondary-btn" style="cursor:pointer;" title="Importar Backup dos Dados">
+          <div class="action-buttons">
+            <button class="secondary-btn" id="exportBackupBtn">💾 Backup</button>
+            <label class="secondary-btn" style="cursor:pointer;">
               📂 Importar <input type="file" id="importBackupInput" accept=".json" style="display:none;">
             </label>
             <button class="primary-btn" id="novaSolicitacaoBtn">+ Nova Solicitação</button>
@@ -59,25 +61,44 @@
 
         <div class="cards">
           <article class="stat-card">
-            <span>Solicitações Novas</span>
-            <strong id="statNovas">0</strong>
-            <small>Aguardando análise</small>
+            <span>Coletas Realizadas</span>
+            <strong id="statPercentRealizadas">0%</strong>
+            <small id="statCountRealizadas">0 coletas concluídas</small>
           </article>
           <article class="stat-card">
-            <span>Agendadas</span>
-            <strong id="statAgendadas">0</strong>
-            <small>Prontas para coleta</small>
+            <span>Coletas Não Realizadas</span>
+            <strong id="statPercentNaoRealizadas" style="color:var(--orange-dark)">0%</strong>
+            <small id="statCountNaoRealizadas">0 pendentes / canceladas</small>
           </article>
           <article class="stat-card">
-            <span>Em Rota</span>
+            <span>Em Rota Hoje</span>
             <strong id="statEmRota">0</strong>
-            <small>Em andamento</small>
+            <small>Coletas em andamento</small>
           </article>
           <article class="stat-card">
-            <span>Finalizadas</span>
-            <strong id="statFinalizadas">0</strong>
-            <small>Concluídas</small>
+            <span>Total de Solicitações</span>
+            <strong id="statTotal">0</strong>
+            <small>Base cadastrada</small>
           </article>
+        </div>
+
+        <div class="dashboard-charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px;">
+          <div class="panel">
+            <div class="panel-heading">
+              <h2>Volume por Categoria (Litros)</h2>
+            </div>
+            <div style="position: relative; height: 260px;">
+              <canvas id="materialsChart"></canvas>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-heading">
+              <h2>Taxa de Conclusão</h2>
+            </div>
+            <div style="position: relative; height: 260px;">
+              <canvas id="completionChart"></canvas>
+            </div>
+          </div>
         </div>
 
         <div class="panel">
@@ -98,10 +119,9 @@
           <div>
             <p class="eyebrow">OPERAÇÕES</p>
             <h1>Gestão de Solicitações</h1>
-            <p>Acompanhe, altere o status e compartilhe o formulário público com a comunidade.</p>
           </div>
           <div class="action-buttons">
-            <button class="share-btn" id="shareFormBtn" title="Copiar Link do Formulário Público">🔗 Copiar Link Público</button>
+            <button class="share-btn" id="shareFormBtn">🔗 Copiar Link Público</button>
             <button class="primary-btn" id="novaSolicitacaoBtn2">+ Nova Solicitação</button>
           </div>
         </div>
@@ -123,7 +143,46 @@
         </div>
       </section>
 
-      <!-- FORMULÁRIO PÚBLICO INSTITUCIONAL -->
+      <!-- AGENDA / CALENDÁRIO SECTION -->
+      <section id="agenda" class="section">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">PLANEJAMENTO</p>
+            <h1>Agenda de Coletas</h1>
+            <p>Selecione um dia para visualizar e gerenciar as coletas agendadas.</p>
+          </div>
+        </div>
+        <div class="panel">
+          <div id="calendarContainer"></div>
+        </div>
+      </section>
+
+      <!-- ROTAS DE HOJE SECTION -->
+      <section id="rotas" class="section">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">LOGÍSTICA DO DIA</p>
+            <h1>Rotas de Hoje</h1>
+            <p>Itinerários otimizados e alocação de veículos para a data de hoje.</p>
+          </div>
+        </div>
+        <div id="todayRoutesContainer"></div>
+      </section>
+
+      <!-- TELA EXCLUSIVA DO MOTORISTA -->
+      <section id="driver-view" class="section">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">MODO MOTORISTA</p>
+            <h1>Minhas Coletas de Hoje</h1>
+            <p>Acesse o mapa de navegação e confirme o recolhimento nos pontos cadastrados.</p>
+          </div>
+          <button class="share-btn" id="shareDriverAppBtn">📱 Copiar Link do App Motorista</button>
+        </div>
+        <div id="driverRoutesContainer"></div>
+      </section>
+
+      <!-- FORMULÁRIO PÚBLICO -->
       <section id="public-form-section" class="section">
         <div class="public-container">
           <div class="public-header">
@@ -132,28 +191,10 @@
               <img src="Logo_recicle_maiss.png" alt="Recicle+ Trairi" class="partner-logo">
               <img src="Logo_incicloo.png" alt="Inciclo Soluções em Resíduos" class="partner-logo">
             </div>
-            <h1>Formulário de Solicitação de Coleta de Resíduos</h1>
-            <p>Associação Sol Nascente | Recicle+ Trairi | Inciclo Soluções em Resíduos</p>
-            <p class="public-sub">Preencha as informações do formulário abaixo para registrar o pedido de coleta reciclável.</p>
+            <h1>Formulário de Coleta de Resíduos</h1>
+            <p>Associação Sol Nascente | Recicle+ Trairi | Inciclo</p>
           </div>
-          <div class="public-card" id="publicFormContainer">
-            <!-- Form público injetado via JavaScript -->
-          </div>
-        </div>
-      </section>
-
-      <!-- COLETAS SECTION -->
-      <section id="coletas" class="section">
-        <div class="page-title">
-          <div>
-            <p class="eyebrow">OPERAÇÃO</p>
-            <h1>Coletas Programadas</h1>
-            <p>Detalhamento e agenda das coletas ativas.</p>
-          </div>
-        </div>
-        <div class="empty-state">
-          <h2>Nenhuma Coleta Programada</h2>
-          <p>As solicitações marcadas como agendadas aparecerão nesta área.</p>
+          <div class="public-card" id="publicFormContainer"></div>
         </div>
       </section>
 
@@ -163,27 +204,12 @@
           <div>
             <p class="eyebrow">FROTA</p>
             <h1>Cadastro de Veículos</h1>
-            <p>Gerencie os veículos da associação e defina as capacidades de carga.</p>
           </div>
           <button class="primary-btn" id="novoVeiculoBtn">+ Novo Veículo</button>
         </div>
-
         <div class="panel">
           <div id="vehiclesList" class="table-wrap"></div>
         </div>
-      </section>
-
-      <!-- ROTAS SECTION AUTOMATIZADA -->
-      <section id="rotas" class="section">
-        <div class="page-title">
-          <div>
-            <p class="eyebrow">LOGÍSTICA INTELIGENTE</p>
-            <h1>Rotas & Frota do Dia</h1>
-            <p>Gerenciamento automático de itinerários e alocação de veículos por capacidade.</p>
-          </div>
-        </div>
-
-        <div id="routesByVehicleContainer"></div>
       </section>
 
       <!-- CLIENTES SECTION -->
@@ -192,7 +218,6 @@
           <div>
             <p class="eyebrow">CADASTRO</p>
             <h1>Base de Solicitantes</h1>
-            <p>Listagem de cidadãos e parceiros cadastrados.</p>
           </div>
         </div>
         <div id="clientsList" class="client-grid"></div>
@@ -200,49 +225,51 @@
     </main>
   </div>
 
-  <!-- MODAL DE SOLICITAÇÃO INTERNA -->
+  <!-- MODAIS -->
   <div class="modal hidden" id="requestModal">
     <div class="modal-card">
-      <button class="close-btn" id="closeModal" aria-label="Fechar">✕</button>
+      <button class="close-btn" id="closeModal">✕</button>
       <p class="eyebrow">REGISTRO DE COLETA</p>
       <h2>Nova Solicitação Interna</h2>
       <div id="modalFormContainer"></div>
     </div>
   </div>
 
-  <!-- MODAL DE DETALHES E EDIÇÃO DO CLIENTE -->
   <div class="modal hidden" id="clientModal">
     <div class="modal-card">
-      <button class="close-btn" id="closeClientModal" aria-label="Fechar">✕</button>
+      <button class="close-btn" id="closeClientModal">✕</button>
       <p class="eyebrow">CADASTRO DO SOLICITANTE</p>
       <h2 id="clientModalTitle">Detalhes do Cliente</h2>
       <div id="clientModalContent"></div>
     </div>
   </div>
 
-  <!-- MODAL DE CADASTRO DE VEÍCULO -->
   <div class="modal hidden" id="vehicleModal">
     <div class="modal-card">
-      <button class="close-btn" id="closeVehicleModal" aria-label="Fechar">✕</button>
+      <button class="close-btn" id="closeVehicleModal">✕</button>
       <p class="eyebrow">FROTA</p>
       <h2>Cadastrar Novo Veículo</h2>
       <form id="vehicleForm" class="simplified-form">
         <div class="form-group-block">
           <label class="form-label">Nome/Modelo do Veículo *
-            <input name="name" required placeholder="Ex: Caminhão Baú ou Triciclo" class="big-input">
+            <input name="name" required placeholder="Ex: Triciclo Centro ou Caminhão Baú" class="big-input">
           </label>
           <label class="form-label">Placa / Identificador *
-            <input name="plate" required placeholder="Ex: TR-01" class="big-input">
+            <input name="plate" required placeholder="Ex: TRI-01" class="big-input">
           </label>
+
+          <label class="form-label">Tipo de Operação do Veículo *
+            <select name="type" required class="big-select">
+              <option value="TRICICLO">Triciclo (Exclusivo para o Centro de Trairi)</option>
+              <option value="CAMINHAO">Caminhão (Demais localidades / Distritos)</option>
+            </select>
+          </label>
+
           <label class="form-label">Capacidade Máxima (Litros) *
-            <input name="capacityLiters" type="number" required placeholder="Ex: 5000" class="big-input">
+            <input name="capacityLiters" type="number" required placeholder="Ex: 1000" class="big-input">
           </label>
           <label class="form-label">Capacidade Máxima (Kg)
-            <input name="capacityKg" type="number" placeholder="Ex: 1500" class="big-input">
-          </label>
-          <label class="form-label">Volume Mínimo para Saída (Litros) *
-            <small style="color:var(--muted);font-weight:400;">Ex: O caminhão só sai se houver acúmulo acima de 1000 Litros.</small>
-            <input name="minVolumeLiters" type="number" required placeholder="Ex: 1000" class="big-input">
+            <input name="capacityKg" type="number" placeholder="Ex: 500" class="big-input">
           </label>
         </div>
         <button class="primary-btn submit-btn" type="submit">SALVAR VEÍCULO</button>
