@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Sistema de Gestão de Coletas - Inciclo / Associação Sol Nascente / Recicle+ Trairi">
-  <title>Sistema de Gestão de Coletas de Resíduos</title>
+  <title>Sistema de Coletas - Associação Sol Nascente</title>
 
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,7 +17,7 @@
 <body>
   <header class="topbar">
     <div class="brand">
-      <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="brand-logo">
+      <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="brand-logo" onerror="this.style.display='none'">
       <div class="brand-title-wrap">
         <strong>Sistema de Coletas de Resíduos</strong>
         <span>Centro de Triagem Trairi</span>
@@ -31,13 +30,13 @@
   <div class="layout">
     <aside class="sidebar" id="sidebar">
       <nav>
-        <button class="nav-item active" data-section="dashboard"><span>Dashboard</span></button>
-        <button class="nav-item" data-section="solicitacoes"><span>Solicitações</span></button>
-        <button class="nav-item" data-section="agenda"><span>Agenda / Calendário</span></button>
-        <button class="nav-item" data-section="rotas"><span>Rotas de Hoje</span></button>
-        <button class="nav-item" data-section="clientes"><span>Clientes</span></button>
-        <button class="nav-item" data-section="veiculos"><span>Veículos</span></button>
-        <button class="nav-item" data-section="driver-view" id="driverNavBtn" style="border-top:1px solid var(--border); margin-top:10px;"><span>🚚 Tela do Motorista</span></button>
+        <button type="button" class="nav-item active" data-section="dashboard"><span>Dashboard</span></button>
+        <button type="button" class="nav-item" data-section="solicitacoes"><span>Solicitações</span></button>
+        <button type="button" class="nav-item" data-section="agenda"><span>Agenda / Calendário</span></button>
+        <button type="button" class="nav-item" data-section="rotas"><span>Rotas de Hoje</span></button>
+        <button type="button" class="nav-item" data-section="clientes"><span>Clientes</span></button>
+        <button type="button" class="nav-item" data-section="veiculos"><span>Veículos</span></button>
+        <button type="button" class="nav-item" data-section="driver-view" id="driverNavBtn" style="border-top:1px solid var(--border); margin-top:10px;"><span>🚚 Tela do Motorista</span></button>
       </nav>
     </aside>
 
@@ -51,11 +50,11 @@
             <p>Acompanhamento das solicitações e gerenciamento de operações de coleta.</p>
           </div>
           <div class="action-buttons">
-            <button class="secondary-btn" id="exportBackupBtn">💾 Backup</button>
+            <button type="button" class="secondary-btn" id="exportBackupBtn">💾 Backup</button>
             <label class="secondary-btn" style="cursor:pointer;">
               📂 Importar <input type="file" id="importBackupInput" accept=".json" style="display:none;">
             </label>
-            <button class="primary-btn" id="novaSolicitacaoBtn">+ Nova Solicitação</button>
+            <button type="button" class="primary-btn btn-open-modal">+ Nova Solicitação</button>
           </div>
         </div>
 
@@ -82,12 +81,12 @@
           </article>
         </div>
 
-        <div class="dashboard-charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div class="dashboard-charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 24px;">
           <div class="panel">
             <div class="panel-heading">
               <h2>Volume por Categoria (Litros)</h2>
             </div>
-            <div style="position: relative; height: 260px;">
+            <div style="position: relative; height: 240px;">
               <canvas id="materialsChart"></canvas>
             </div>
           </div>
@@ -95,7 +94,7 @@
             <div class="panel-heading">
               <h2>Taxa de Conclusão</h2>
             </div>
-            <div style="position: relative; height: 260px;">
+            <div style="position: relative; height: 240px;">
               <canvas id="completionChart"></canvas>
             </div>
           </div>
@@ -107,7 +106,7 @@
               <h2>Últimas Solicitações Registradas</h2>
               <p>Histórico local de solicitações armazenadas.</p>
             </div>
-            <button class="secondary-btn" data-section-link="solicitacoes">Ver Todas</button>
+            <button type="button" class="secondary-btn" data-section-link="solicitacoes">Ver Todas</button>
           </div>
           <div id="recentList" class="table-wrap"></div>
         </div>
@@ -121,8 +120,8 @@
             <h1>Gestão de Solicitações</h1>
           </div>
           <div class="action-buttons">
-            <button class="share-btn" id="shareFormBtn">🔗 Copiar Link Público</button>
-            <button class="primary-btn" id="novaSolicitacaoBtn2">+ Nova Solicitação</button>
+            <button type="button" class="share-btn" id="shareFormBtn">🔗 Copiar Link Público</button>
+            <button type="button" class="primary-btn btn-open-modal">+ Nova Solicitação</button>
           </div>
         </div>
 
@@ -177,25 +176,9 @@
             <h1>Minhas Coletas de Hoje</h1>
             <p>Acesse o mapa de navegação e confirme o recolhimento nos pontos cadastrados.</p>
           </div>
-          <button class="share-btn" id="shareDriverAppBtn">📱 Copiar Link do App Motorista</button>
+          <button type="button" class="share-btn" id="shareDriverAppBtn">📱 Copiar Link do App Motorista</button>
         </div>
         <div id="driverRoutesContainer"></div>
-      </section>
-
-      <!-- FORMULÁRIO PÚBLICO -->
-      <section id="public-form-section" class="section">
-        <div class="public-container">
-          <div class="public-header">
-            <div class="partner-logos-container">
-              <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="partner-logo">
-              <img src="Logo_recicle_maiss.png" alt="Recicle+ Trairi" class="partner-logo">
-              <img src="Logo_incicloo.png" alt="Inciclo Soluções em Resíduos" class="partner-logo">
-            </div>
-            <h1>Formulário de Coleta de Resíduos</h1>
-            <p>Associação Sol Nascente | Recicle+ Trairi | Inciclo</p>
-          </div>
-          <div class="public-card" id="publicFormContainer"></div>
-        </div>
       </section>
 
       <!-- VEÍCULOS SECTION -->
@@ -205,7 +188,7 @@
             <p class="eyebrow">FROTA</p>
             <h1>Cadastro de Veículos</h1>
           </div>
-          <button class="primary-btn" id="novoVeiculoBtn">+ Novo Veículo</button>
+          <button type="button" class="primary-btn" id="novoVeiculoBtn">+ Novo Veículo</button>
         </div>
         <div class="panel">
           <div id="vehiclesList" class="table-wrap"></div>
@@ -228,25 +211,16 @@
   <!-- MODAIS -->
   <div class="modal hidden" id="requestModal">
     <div class="modal-card">
-      <button class="close-btn" id="closeModal">✕</button>
+      <button type="button" class="close-btn" id="closeModal">✕</button>
       <p class="eyebrow">REGISTRO DE COLETA</p>
       <h2>Nova Solicitação Interna</h2>
       <div id="modalFormContainer"></div>
     </div>
   </div>
 
-  <div class="modal hidden" id="clientModal">
-    <div class="modal-card">
-      <button class="close-btn" id="closeClientModal">✕</button>
-      <p class="eyebrow">CADASTRO DO SOLICITANTE</p>
-      <h2 id="clientModalTitle">Detalhes do Cliente</h2>
-      <div id="clientModalContent"></div>
-    </div>
-  </div>
-
   <div class="modal hidden" id="vehicleModal">
     <div class="modal-card">
-      <button class="close-btn" id="closeVehicleModal">✕</button>
+      <button type="button" class="close-btn" id="closeVehicleModal">✕</button>
       <p class="eyebrow">FROTA</p>
       <h2>Cadastrar Novo Veículo</h2>
       <form id="vehicleForm" class="simplified-form">
@@ -257,19 +231,14 @@
           <label class="form-label">Placa / Identificador *
             <input name="plate" required placeholder="Ex: TRI-01" class="big-input">
           </label>
-
           <label class="form-label">Tipo de Operação do Veículo *
             <select name="type" required class="big-select">
               <option value="TRICICLO">Triciclo (Exclusivo para o Centro de Trairi)</option>
               <option value="CAMINHAO">Caminhão (Demais localidades / Distritos)</option>
             </select>
           </label>
-
           <label class="form-label">Capacidade Máxima (Litros) *
             <input name="capacityLiters" type="number" required placeholder="Ex: 1000" class="big-input">
-          </label>
-          <label class="form-label">Capacidade Máxima (Kg)
-            <input name="capacityKg" type="number" placeholder="Ex: 500" class="big-input">
           </label>
         </div>
         <button class="primary-btn submit-btn" type="submit">SALVAR VEÍCULO</button>
