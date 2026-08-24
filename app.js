@@ -288,181 +288,84 @@ function checkSpecialURL() {
 function buildFormHTML(formId) {
   return `
     <form id="${formId}" class="simplified-form">
-      <!-- 1 -->
-      <div class="form-group-block">
-        <span class="form-block-title">1. Dados do Solicitante</span>
-        <label class="form-label">
-          Nome Completo *
-          <input name="name" required maxlength="100" placeholder="Digite seu nome completo" class="big-input">
-        </label>
-        <label class="form-label">
-          Telefone de Contato (WhatsApp) *
-          <input name="phone" required inputmode="numeric" maxlength="15" placeholder="(88) 99999-9999" class="big-input phone-mask">
-        </label>
-      </div>
-
-      <!-- 2 -->
-      <div class="form-group-block">
-        <span class="form-block-title">2. Tipo de Localidade</span>
-        <label class="form-label">
-          Selecione o tipo de local para a coleta *
-          <select name="type" required class="big-select type-select">
-            <option value="Residência">Residência</option>
-            <option value="Estabelecimento">Estabelecimento Comercial / Empresa</option>
-            <option value="Evento">Evento Público ou Privado</option>
-            <option value="Condomínio">Condomínio Residencial / Comercial</option>
-            <option value="Outro">Outro</option>
-          </select>
-        </label>
-        <div class="custom-location-wrap hidden">
-          <label class="form-label">
-            Nome do Estabelecimento / Local / Evento *
-            <input name="customLocationName" placeholder="Informe o nome da empresa ou local" class="big-input">
-          </label>
-        </div>
-      </div>
-
-      <!-- 3 -->
-      <div class="form-group-block">
-        <span class="form-block-title">3. Localização Exata</span>
-        <label class="form-label">Encontre seu endereço no mapa</label>
-        <div class="address-search-wrap" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-          <input type="text" class="big-input address-search-input" placeholder="Digite seu endereço, rua, bairro ou cidade..." style="flex:1;min-width:220px;" autocomplete="street-address">
-          <button type="button" class="secondary-btn address-search-btn">🔍 Pesquisar</button>
-        </div>
-        <div class="address-search-results" style="margin-bottom:10px;"></div>
-        <p class="map-instruction">
-          Você pode pesquisar seu endereço acima, selecionar um resultado e confirmar.
-          Também pode clicar diretamente no mapa.
-        </p>
-        <button type="button" class="geo-btn">Usar minha localização atual</button>
-        <div class="map-container" id="map-${formId}"></div>
-        <div class="selected-address-box" style="margin-top:12px;padding:12px;border-radius:8px;background:#f5f5f5;display:none;">
-          <strong>📍 Endereço selecionado</strong>
-          <div class="selected-address-text" style="margin-top:6px;"></div>
-          <button type="button" class="primary-btn confirm-address-btn" style="margin-top:10px;">✓ CONFIRMAR ESTE ENDEREÇO</button>
-        </div>
-        <div class="coords-display">
-          <span>Coordenadas Geográficas:</span>
-          <strong class="coords-text">Nenhum ponto confirmado</strong>
-          <input type="hidden" name="latitude" required>
-          <input type="hidden" name="longitude" required>
-        </div>
-      </div>
-
       <!-- 4 -->
-      <div class="form-group-block">
-        <span class="form-block-title">4. Resíduos para Coleta</span>
-        <label class="form-label">Selecione os tipos de materiais recicláveis disponíveis *</label>
-        <div class="materials-grid">
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Papel"> Papel</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Papelão"> Papelão</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Vidro"> Vidro</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Metal"> Metal / Latas</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Plástico"> Plástico / PET</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Eletrônicos"> Eletrônicos</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Óleo de Cozinha Usado"> Óleo de Cozinha Usado</label>
-          <label class="material-checkbox"><input type="checkbox" name="materials_list" id="otherMaterialCheckbox" value="Outros"> Outros</label>
-        </div>
-        <div id="otherMaterialWrap" class="hidden" style="margin-top:12px;">
-          <label class="form-label">
-            Qual resíduo? Especificar: *
-            <input name="otherMaterialText" id="otherMaterialText" placeholder="Ex: Baterias, Sucata de Alumínio..." class="big-input">
-          </label>
-        </div>
-      </div>
+<div class="form-group-block">
+  <span class="form-block-title">4. Resíduos para Coleta</span>
+  <label class="form-label">Selecione os tipos de materiais recicláveis disponíveis *</label>
+  
+  <div class="materials-grid">
+    <label class="material-card">
+      <input type="checkbox" name="materials_list" value="Papel">
+      <span class="card-content">
+        <span class="card-icon">📄</span>
+        <span class="card-text">Papel</span>
+      </span>
+    </label>
 
-      <!-- 5 -->
-      <div class="form-group-block row-group">
-        <label class="form-label flex-1">
-          Quantidade Estimada *
-          <input name="quantity" type="number" step="0.1" min="1" required placeholder="Ex: 50" class="big-input">
-        </label>
-        <label class="form-label flex-1">
-          Unidade de Medida *
-          <select name="unit" required class="big-select">
-            <option value="Kg">Kg (Quilogramas)</option>
-            <option value="Sacos de 100L">Sacos de 100 Litros</option>
-            <option value="Litros">Litros (Para Óleo/Líquidos)</option>
-            <option value="BigBags">BigBags</option>
-            <option value="Caixas">Caixas</option>
-            <option value="Bombonas">Bombonas</option>
-          </select>
-        </label>
-      </div>
+    <label class="material-card">
+      <input type="checkbox" name="materials_list" value="Papelão">
+      <span class="card-content">
+        <span class="card-icon">📦</span>
+        <span class="card-text">Papelão</span>
+      </span>
+    </label>
 
-      <!-- 6 -->
-      <div class="form-group-block">
-        <span class="form-block-title">6. Frequência e Agendamento da Coleta</span>
-        <label class="form-label">
-          Com que frequência a coleta deve acontecer? *
-          <select name="frequency" id="frequencySelect" required class="big-select">
-            <option value="">Selecione a periodicidade...</option>
-            <option value="Única">Coleta Pontual (Uma única vez)</option>
-            <option value="Diária">Uma vez por dia (Diária)</option>
-            <option value="Semanal">Uma vez por semana</option>
-            <option value="Quinzenal">Uma vez a cada 15 dias (Quinzenal)</option>
-            <option value="Mensal">Uma vez no mês (Mensal)</option>
-          </select>
-        </label>
+    <label class="material-card">
+      <input type="checkbox" name="materials_list" value="Vidro">
+      <span class="card-content">
+        <span class="card-icon">🍾</span>
+        <span class="card-text">Vidro</span>
+      </span>
+    </label>
 
-        <div id="singleDateWrap" class="hidden frequency-subwrap">
-          <label class="form-label">
-            Data Preferencial para Coleta *
-            <input type="date" name="preferred_date" id="preferredDateInput" class="big-input">
-          </label>
-        </div>
+    <label class="material-card">
+      <input type="checkbox" name="materials_list" value="Metal">
+      <span class="card-content">
+        <span class="card-icon">🥫</span>
+        <span class="card-text">Metal / Latas</span>
+      </span>
+    </label>
 
-        <div id="weeklyDaysWrap" class="hidden frequency-subwrap">
-          <label class="form-label">Dia(s) preferencial(is) da semana para coleta *</label>
-          <div class="days-grid">
-            <label class="day-checkbox"><input type="checkbox" name="preferred_days" value="Segunda-feira"> Seg</label>
-            <label class="day-checkbox"><input type="checkbox" name="preferred_days" value="Terça-feira"> Ter</label>
-            <label class="day-checkbox"><input type="checkbox" name="preferred_days" value="Quarta-feira"> Quar</label>
-            <label class="day-checkbox"><input type="checkbox" name="preferred_days" value="Quinta-feira"> Quin</label>
-            <label class="day-checkbox"><input type="checkbox" name="preferred_days" value="Sexta-feira"> Sex</label>
-            <label class="day-checkbox"><input type="checkbox" name="preferred_days" value="Sábado"> Sáb</label>
-          </div>
-        </div>
+    <label class="material-card">
+      <input type="checkbox" name="materials_list" value="Plástico">
+      <span class="card-content">
+        <span class="card-icon">🥤</span>
+        <span class="card-text">Plástico / PET</span>
+      </span>
+    </label>
 
-        <div id="monthlyWrap" class="hidden frequency-subwrap row-group">
-          <label class="form-label flex-1">
-            Qual semana do mês? *
-            <select name="monthly_week" id="monthlyWeekSelect" class="big-select">
-              <option value="1ª Semana">1ª Semana do mês</option>
-              <option value="2ª Semana">2ª Semana do mês</option>
-              <option value="3ª Semana">3ª Semana do mês</option>
-              <option value="4ª Semana">4ª Semana do mês</option>
-            </select>
-          </label>
-          <label class="form-label flex-1">
-            Em qual dia da semana? *
-            <select name="monthly_day" id="monthlyDaySelect" class="big-select">
-              <option value="Segunda-feira">Segunda-feira</option>
-              <option value="Terça-feira">Terça-feira</option>
-              <option value="Quarta-feira">Quarta-feira</option>
-              <option value="Quinta-feira">Quinta-feira</option>
-              <option value="Sexta-feira">Sexta-feira</option>
-              <option value="Sábado">Sábado</option>
-            </select>
-          </label>
-        </div>
-      </div>
+    <label class="material-card">
+      <input type="checkbox" name="materials_list" value="Eletrônicos">
+      <span class="card-content">
+        <span class="card-icon">💻</span>
+        <span class="card-text">Eletrônicos</span>
+      </span>
+    </label>
 
-      <!-- 7 -->
-      <div class="form-group-block">
-        <span class="form-block-title">7. Observações e Referências</span>
-        <label class="form-label">
-          Ponto de Referência ou Informações Adicionais (Opcional)
-          <textarea name="notes" rows="3" placeholder="Exemplo: Material armazenado ao lado da entrada secundária." class="big-textarea"></textarea>
-        </label>
-      </div>
+    <label class="material-card">
+      <input type="checkbox" name="materials_list" value="Óleo de Cozinha Usado">
+      <span class="card-content">
+        <span class="card-icon">🛢️</span>
+        <span class="card-text">Óleo Usado</span>
+      </span>
+    </label>
 
-      <button class="primary-btn submit-btn" type="submit">SUBMETER SOLICITAÇÃO DE COLETA</button>
-    </form>
-  `;
-}
+    <label class="material-card">
+      <input type="checkbox" name="materials_list" id="otherMaterialCheckbox" value="Outros">
+      <span class="card-content">
+        <span class="card-icon">♻️</span>
+        <span class="card-text">Outros</span>
+      </span>
+    </label>
+  </div>
 
+  <div id="otherMaterialWrap" class="hidden" style="margin-top:12px;">
+    <label class="form-label">
+      Qual resíduo? Especificar: *
+      <input name="otherMaterialText" id="otherMaterialText" placeholder="Ex: Baterias, Sucata..." class="big-input">
+    </label>
+  </div>
+</div>
 function formatPhone(value) {
   const digits = value.replace(/\D/g, "").slice(0, 11);
   if (digits.length <= 2) return digits ? `(${digits}` : "";
