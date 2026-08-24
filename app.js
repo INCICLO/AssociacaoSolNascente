@@ -29,7 +29,7 @@ const defaultRequests = [
     customLocationName: "",
     latitude: "-3.3752",
     longitude: "-39.2689",
-    materials: "Papel, Papelão",
+    materials: "Papel, Papelão, Óleo de Cozinha Usado",
     quantity: "5",
     unit: "Sacos de 100L",
     frequency: "Semanal (Sexta-feira)",
@@ -130,6 +130,7 @@ function importData(jsonFile) {
 
         renderDashboard();
         renderRequests();
+        renderCollections();
         toast("Dados importados com sucesso!");
       } else {
         throw new Error("Estrutura de arquivo inválida.");
@@ -246,6 +247,7 @@ function showSection(sectionId) {
 
   if (sectionId === "dashboard") renderDashboard();
   if (sectionId === "solicitacoes") renderRequests();
+  if (sectionId === "coletas") renderCollections();
   if (sectionId === "veiculos") renderVehicles();
   if (sectionId === "rotas") renderRoutes();
   if (sectionId === "clientes") renderClients();
@@ -280,7 +282,7 @@ function checkSpecialURL() {
 }
 
 // ============================================================
-// ESTRUTURA INTACTA DO SEU FORMULÁRIO (SENSÍVEL)
+// ESTRUTURA COMPLETA DO FORMULÁRIO (INCLUINDO ÓLEO DE COZINHA)
 // ============================================================
 
 function buildFormHTML(formId) {
@@ -325,7 +327,7 @@ function buildFormHTML(formId) {
         <span class="form-block-title">3. Localização Exata</span>
         <label class="form-label">Encontre seu endereço no mapa</label>
         <div class="address-search-wrap" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-          <input type="text" class="big-input address-search-input" placeholder="Digite seu endereço, rua, número ou localidade..." style="flex:1;min-width:220px;" autocomplete="street-address">
+          <input type="text" class="big-input address-search-input" placeholder="Digite seu endereço, rua, bairro ou cidade..." style="flex:1;min-width:220px;" autocomplete="street-address">
           <button type="button" class="secondary-btn address-search-btn">🔍 Pesquisar</button>
         </div>
         <div class="address-search-results" style="margin-bottom:10px;"></div>
@@ -359,12 +361,13 @@ function buildFormHTML(formId) {
           <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Metal"> Metal / Latas</label>
           <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Plástico"> Plástico / PET</label>
           <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Eletrônicos"> Eletrônicos</label>
+          <label class="material-checkbox"><input type="checkbox" name="materials_list" value="Óleo de Cozinha Usado"> Óleo de Cozinha Usado</label>
           <label class="material-checkbox"><input type="checkbox" name="materials_list" id="otherMaterialCheckbox" value="Outros"> Outros</label>
         </div>
         <div id="otherMaterialWrap" class="hidden" style="margin-top:12px;">
           <label class="form-label">
             Qual resíduo? Especificar: *
-            <input name="otherMaterialText" id="otherMaterialText" placeholder="Ex: Óleo de cozinha usado, Baterias..." class="big-input">
+            <input name="otherMaterialText" id="otherMaterialText" placeholder="Ex: Baterias, Sucata de Alumínio..." class="big-input">
           </label>
         </div>
       </div>
@@ -380,6 +383,7 @@ function buildFormHTML(formId) {
           <select name="unit" required class="big-select">
             <option value="Kg">Kg (Quilogramas)</option>
             <option value="Sacos de 100L">Sacos de 100 Litros</option>
+            <option value="Litros">Litros (Para Óleo/Líquidos)</option>
             <option value="BigBags">BigBags</option>
             <option value="Caixas">Caixas</option>
             <option value="Bombonas">Bombonas</option>
@@ -634,10 +638,15 @@ function initFormEvents(formId) {
       closeModal();
       renderDashboard();
       renderRequests();
+      renderCollections();
       toast(`Solicitação ${request.id} registrada com sucesso.`);
     }
   });
 }
+
+// ============================================================
+// MAPA + PESQUISA DE ENDEREÇOS OTIMIZADA
+// ============================================================
 
 function initMap(formId) {
   const mapElement = document.getElementById(`map-${formId}`);
@@ -663,7 +672,6 @@ function initMap(formId) {
 
     let marker = null;
     let pendingLocation = null;
-    let confirmedLocation = null;
 
     const form = document.getElementById(formId);
     const coordsText = form.querySelector(".coords-text");
@@ -680,17 +688,16 @@ function initMap(formId) {
       if (marker) map.removeLayer(marker);
 
       marker = L.marker([lat, lng]).addTo(map);
-      marker.bindPopup(addressText || "Ponto de coleta selecionado");
+      marker.bindPopup(addressText || "Ponto de coleta selecionado").openPopup();
       map.setView([lat, lng], 17);
 
       pendingLocation = { lat: Number(lat), lng: Number(lng), address: addressText || "" };
 
       if (selectedAddressBox) selectedAddressBox.style.display = "block";
       if (selectedAddressText) {
-        selectedAddressText.textContent =
-          addressText || `Latitude: ${Number(lat).toFixed(6)} | Longitude: ${Number(lng).toFixed(6)}`;
+        selectedAddressText.textContent = addressText || `Lat: ${Number(lat).toFixed(6)} | Lng: ${Number(lng).toFixed(6)}`;
       }
-      if (coordsText) coordsText.textContent = "Ponto selecionado — confirme o endereço";
+      if (coordsText) coordsText.textContent = "Ponto selecionado — clique em confirmar";
 
       if (latInput) latInput.value = "";
       if (lngInput) lngInput.value = "";
@@ -702,16 +709,15 @@ function initMap(formId) {
         return;
       }
 
-      confirmedLocation = pendingLocation;
-      latInput.value = Number(confirmedLocation.lat).toFixed(6);
-      lngInput.value = Number(confirmedLocation.lng).toFixed(6);
+      latInput.value = Number(pendingLocation.lat).toFixed(6);
+      lngInput.value = Number(pendingLocation.lng).toFixed(6);
 
-      coordsText.textContent = `Latitude: ${Number(confirmedLocation.lat).toFixed(5)} | Longitude: ${Number(confirmedLocation.lng).toFixed(5)}`;
+      coordsText.textContent = `Latitude: ${Number(pendingLocation.lat).toFixed(5)} | Longitude: ${Number(pendingLocation.lng).toFixed(5)}`;
 
       if (selectedAddressText) {
         selectedAddressText.innerHTML = `
-          <strong style="color:green;">✓ Localização confirmada</strong><br>
-          ${escapeHTML(confirmedLocation.address || "Ponto selecionado manualmente no mapa.")}
+          <strong style="color:green;">✓ Localização confirmada!</strong><br>
+          ${escapeHTML(pendingLocation.address || "Ponto selecionado manualmente no mapa.")}
         `;
       }
 
@@ -719,14 +725,14 @@ function initMap(formId) {
     }
 
     map.on("click", e => {
-      setMarker(e.latlng.lat, e.latlng.lng, "Ponto selecionado manualmente no mapa");
+      setMarker(e.latlng.lat, e.latlng.lng, "Ponto marcado no mapa");
     });
 
     const geoBtn = form.querySelector(".geo-btn");
     if (geoBtn) {
       geoBtn.addEventListener("click", () => {
         if (!navigator.geolocation) {
-          toast("A geolocalização não é suportada por este navegador.");
+          toast("A geolocalização não é suportada neste navegador.");
           return;
         }
 
@@ -736,12 +742,9 @@ function initMap(formId) {
           pos => {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
-
             map.setView([lat, lng], 17);
-            setMarker(lat, lng, "Minha localização atual");
-
-            geoBtn.textContent = "Localização encontrada";
-            setTimeout(() => { geoBtn.textContent = "Usar minha localização atual"; }, 3000);
+            setMarker(lat, lng, "Minha Localização Atual");
+            geoBtn.textContent = "Usar minha localização atual";
           },
           () => {
             toast("Não foi possível obter sua localização. Marque manualmente no mapa.");
@@ -752,6 +755,7 @@ function initMap(formId) {
       });
     }
 
+    // PESQUISAR ENDEREÇOS (COM BUSCA ABRANGENTE E SUPORTE LOCAL)
     async function searchAddress() {
       const query = addressInput.value.trim();
       if (!query) {
@@ -761,35 +765,36 @@ function initMap(formId) {
 
       searchButton.disabled = true;
       searchButton.textContent = "Pesquisando...";
-
-      resultsContainer.innerHTML = `
-        <div style="padding:10px;color:#666;">🔎 Procurando endereço...</div>
-      `;
+      resultsContainer.innerHTML = `<div style="padding:10px;color:var(--muted);">🔎 Procurando endereço no mapa...</div>`;
 
       try {
-        const searchQuery = query.toLowerCase().includes("brasil")
-          ? query
-          : `${query}, Trairi, Ceará, Brasil`;
-
-        if (searchCache.has(searchQuery)) {
-          renderSearchResults(searchCache.get(searchQuery));
-          return;
+        let searchQuery = query;
+        if (!query.toLowerCase().includes("ceará") && !query.toLowerCase().includes("ce")) {
+          searchQuery += ", Trairi, Ceará, Brasil";
         }
 
         const url = `${NOMINATIM_URL}?format=jsonv2&addressdetails=1&limit=5&countrycodes=br&q=${encodeURIComponent(searchQuery)}`;
         const response = await fetch(url, { headers: { "Accept": "application/json" } });
 
-        if (!response.ok) throw new Error("Falha na pesquisa.");
+        if (!response.ok) throw new Error("Erro na requisição.");
 
         const results = await response.json();
-        searchCache.set(searchQuery, results);
-        renderSearchResults(results);
+
+        if (!results.length) {
+          // Tenta novamente sem o sufixo restritivo caso não ache nada
+          const fallbackUrl = `${NOMINATIM_URL}?format=jsonv2&addressdetails=1&limit=5&countrycodes=br&q=${encodeURIComponent(query)}`;
+          const fallbackResp = await fetch(fallbackUrl);
+          const fallbackResults = await fallbackResp.json();
+          renderSearchResults(fallbackResults);
+        } else {
+          renderSearchResults(results);
+        }
 
       } catch (error) {
-        console.error(error);
+        console.error("Erro na busca de endereço:", error);
         resultsContainer.innerHTML = `
-          <div style="padding:10px;border-radius:8px;background:#f8d7da;">
-            Não foi possível pesquisar o endereço agora. Você ainda pode marcar o ponto diretamente no mapa.
+          <div style="padding:10px;border-radius:8px;background:#f8d7da;color:#721c24;">
+            Não foi possível pesquisar o endereço agora. Você pode marcar o ponto diretamente no mapa.
           </div>
         `;
       } finally {
@@ -801,15 +806,15 @@ function initMap(formId) {
     function renderSearchResults(results) {
       if (!results || !results.length) {
         resultsContainer.innerHTML = `
-          <div style="padding:10px;border-radius:8px;background:#fff3cd;">
-            Nenhum endereço encontrado. Tente informar também o nome da rua, número ou bairro.
+          <div style="padding:10px;border-radius:8px;background:#fff3cd;color:#856404;">
+            Nenhum endereço encontrado. Verifique o nome da rua ou marque diretamente no mapa.
           </div>
         `;
         return;
       }
 
       resultsContainer.innerHTML = results.map((result, index) => `
-        <button type="button" class="address-result-item" data-index="${index}" style="display:block;width:100%;text-align:left;padding:12px;margin-bottom:6px;border:1px solid #ddd;border-radius:8px;background:white;cursor:pointer;">
+        <button type="button" class="address-result-item" data-index="${index}" style="display:block;width:100%;text-align:left;padding:10px;margin-bottom:6px;border:1px solid #ddd;border-radius:8px;background:white;cursor:pointer;">
           📍 ${escapeHTML(result.display_name)}
         </button>
       `).join("");
@@ -819,12 +824,11 @@ function initMap(formId) {
         button?.addEventListener("click", () => {
           const lat = Number(result.lat);
           const lng = Number(result.lon);
-
           setMarker(lat, lng, result.display_name);
 
           resultsContainer.innerHTML = `
-            <div style="padding:10px;background:#eef8ee;border-radius:8px;">
-              ✓ Endereço localizado no mapa. Confira o marcador e confirme abaixo.
+            <div style="padding:10px;background:#eef8ee;color:#155724;border-radius:8px;">
+              ✓ Endereço localizado! Confira no mapa e confirme abaixo.
             </div>
           `;
         });
@@ -841,6 +845,127 @@ function initMap(formId) {
 
     confirmButton?.addEventListener("click", confirmLocation);
   }, 200);
+}
+
+// ============================================================
+// ABA DE COLETAS - HISTÓRICO E REAGENDAMENTO AUTOMÁTICO
+// ============================================================
+
+function renderCollections() {
+  const container = document.getElementById("collectionsContainer");
+  if (!container) return;
+
+  const coletadas = requests.filter(r => r.status === "COLETADA" || r.status === "FINALIZADA");
+  const naoFeitas = requests.filter(r => r.status === "NOVA" || r.status === "EM ANÁLISE" || r.status === "CANCELADA");
+
+  container.innerHTML = `
+    <div class="panel" style="margin-bottom:20px;">
+      <div class="panel-heading">
+        <div>
+          <h2>📊 Resumo Operacional das Coletas</h2>
+          <p>Acompanhamento de solicitações concluídas e pendentes/não realizadas.</p>
+        </div>
+      </div>
+      <div class="cards" style="margin-bottom:0;">
+        <article class="stat-card">
+          <span>Coletas Concluídas</span>
+          <strong style="color:var(--success);">${coletadas.length}</strong>
+          <small>Recolhidas com sucesso</small>
+        </article>
+        <article class="stat-card">
+          <span>Não Realizadas / Pendentes</span>
+          <strong style="color:var(--orange-dark);">${naoFeitas.length}</strong>
+          <small>Aguardando reagendamento</small>
+        </article>
+      </div>
+    </div>
+
+    <!-- PAINEL DE COLETAS NÃO REALIZADAS -->
+    <div class="panel" style="margin-bottom:20px;">
+      <div class="panel-heading">
+        <h2>⚠️ Coletas Não Realizadas / Pendentes (${naoFeitas.length})</h2>
+      </div>
+      ${naoFeitas.length ? `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Solicitante</th>
+                <th>Frequência Atual</th>
+                <th>Materiais</th>
+                <th>Status</th>
+                <th>Ação para Próxima Coleta</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${naoFeitas.map(r => `
+                <tr>
+                  <td><strong>${escapeHTML(r.id)}</strong></td>
+                  <td><strong>${escapeHTML(r.name)}</strong><br><small>Tel: ${escapeHTML(r.phone)}</small></td>
+                  <td><small>${escapeHTML(r.frequency)}</small></td>
+                  <td>${escapeHTML(r.materials)}</td>
+                  <td>${statusBadge(r.status)}</td>
+                  <td>
+                    <button type="button" class="primary-btn" style="font-size:12px; padding:6px 12px;" onclick="rescheduleToNextDate('${r.id}')">
+                      🔄 Reagendar para o Próximo Dia
+                    </button>
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      ` : `<p style="padding:10px; color:var(--muted);">Todas as coletas estão em dia!</p>`}
+    </div>
+
+    <!-- PAINEL DE HISTÓRICO DE COLETAS REALIZADAS -->
+    <div class="panel">
+      <div class="panel-heading">
+        <h2>✅ Histórico de Coletas Concluídas (${coletadas.length})</h2>
+      </div>
+      ${coletadas.length ? `
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Solicitante</th>
+                <th>Data do Cadastro</th>
+                <th>Materiais Coletados</th>
+                <th>Carga</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${coletadas.map(r => `
+                <tr>
+                  <td><strong>${escapeHTML(r.id)}</strong></td>
+                  <td><strong>${escapeHTML(r.name)}</strong><br><small>Tel: ${escapeHTML(r.phone)}</small></td>
+                  <td><small>🕒 ${escapeHTML(r.createdAtFormatted || "Data não informada")}</small></td>
+                  <td>${escapeHTML(r.materials)}</td>
+                  <td>${escapeHTML(r.quantity)} ${escapeHTML(r.unit)}</td>
+                  <td>${statusBadge(r.status)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      ` : `<p style="padding:10px; color:var(--muted);">Nenhuma coleta concluída registrada até o momento.</p>`}
+    </div>
+  `;
+}
+
+// LÓGICA DE REAGENDAMENTO AUTOMÁTICO
+function rescheduleToNextDate(id) {
+  const req = requests.find(r => r.id === id);
+  if (!req) return;
+
+  req.status = "AGENDADA";
+  save();
+  renderCollections();
+  renderDashboard();
+  toast(`Solicitação ${id} reagendada para a próxima rota com sucesso!`);
 }
 
 // ============================================================
@@ -1086,6 +1211,7 @@ function convertToLiters(quantityStr, unitStr, materialsStr = "") {
   if (unit.includes("bombona")) return qty * 200;
   if (unit.includes("bigbag")) return qty * 1000;
   if (unit.includes("caixa")) return qty * 50;
+  if (unit.includes("litro")) return qty;
 
   if (unit.includes("kg")) {
     let densityKgPerL = 0.15;
@@ -1094,6 +1220,7 @@ function convertToLiters(quantityStr, unitStr, materialsStr = "") {
     else if (mat.includes("metal") || mat.includes("latas")) densityKgPerL = 0.15;
     else if (mat.includes("eletrônicos")) densityKgPerL = 0.25;
     else if (mat.includes("vidro")) densityKgPerL = 0.35;
+    else if (mat.includes("óleo")) densityKgPerL = 0.92;
 
     return qty / densityKgPerL;
   }
@@ -1117,6 +1244,7 @@ function estimateWeightKg(quantityStr, unitStr, materialsStr = "") {
   else if (mat.includes("metal") || mat.includes("latas")) density = 0.15;
   else if (mat.includes("eletrônicos")) density = 0.25;
   else if (mat.includes("vidro")) density = 0.35;
+  else if (mat.includes("óleo")) density = 0.92;
 
   return liters * density;
 }
