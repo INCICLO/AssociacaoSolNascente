@@ -2,8 +2,9 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Coletas - Associação Sol Nascente</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Sistema de Gestão de Coletas - Inciclo / Associação Sol Nascente / Recicle+ Trairi">
+  <title>Sistema de Gestão de Coletas de Resíduos</title>
 
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +16,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <header class="topbar">
+  <header class="topbar" id="appHeader">
     <div class="brand">
       <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="brand-logo" onerror="this.style.display='none'">
       <div class="brand-title-wrap">
@@ -24,7 +25,7 @@
       </div>
     </div>
 
-    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
+    <button type="button" class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
   </header>
 
   <div class="layout">
@@ -81,12 +82,12 @@
           </article>
         </div>
 
-        <div class="dashboard-charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div class="dashboard-charts-grid">
           <div class="panel">
             <div class="panel-heading">
               <h2>Volume por Categoria (Litros)</h2>
             </div>
-            <div style="position: relative; height: 240px;">
+            <div class="chart-container-box">
               <canvas id="materialsChart"></canvas>
             </div>
           </div>
@@ -94,7 +95,7 @@
             <div class="panel-heading">
               <h2>Taxa de Conclusão</h2>
             </div>
-            <div style="position: relative; height: 240px;">
+            <div class="chart-container-box">
               <canvas id="completionChart"></canvas>
             </div>
           </div>
@@ -127,7 +128,7 @@
 
         <div class="panel">
           <div class="filters">
-            <input id="searchInput" type="search" placeholder="Buscar por nome, telefone ou número de protocolo...">
+            <input id="searchInput" type="search" placeholder="Buscar por nome, telefone ou código...">
             <select id="statusFilter">
               <option value="">Todos os Status</option>
               <option value="NOVA">Nova</option>
@@ -181,6 +182,23 @@
         <div id="driverRoutesContainer"></div>
       </section>
 
+      <!-- FORMULÁRIO PÚBLICO -->
+      <section id="public-form-section" class="section">
+        <div class="public-container">
+          <div class="public-header">
+            <div class="partner-logos-container">
+              <img src="logo-sol-nascente.png" alt="Associação Sol Nascente" class="partner-logo" onerror="this.style.display='none'">
+              <img src="Logo_recicle_maiss.png" alt="Recicle+ Trairi" class="partner-logo" onerror="this.style.display='none'">
+              <img src="Logo_incicloo.png" alt="Inciclo Soluções em Resíduos" class="partner-logo" onerror="this.style.display='none'">
+            </div>
+            <h1>Formulário de Coleta de Resíduos</h1>
+            <p>Associação Sol Nascente | Recicle+ Trairi | Inciclo</p>
+            <p class="public-sub">Preencha os campos abaixo para solicitar a coleta de materiais recicláveis.</p>
+          </div>
+          <div class="public-card" id="publicFormContainer"></div>
+        </div>
+      </section>
+
       <!-- VEÍCULOS SECTION -->
       <section id="veiculos" class="section">
         <div class="page-title">
@@ -208,7 +226,7 @@
     </main>
   </div>
 
-  <!-- MODAIS -->
+  <!-- MODAL DE SOLICITAÇÃO INTERNA -->
   <div class="modal hidden" id="requestModal">
     <div class="modal-card">
       <button type="button" class="close-btn" id="closeModal">✕</button>
@@ -218,6 +236,7 @@
     </div>
   </div>
 
+  <!-- MODAL DE CADASTRO DE VEÍCULO -->
   <div class="modal hidden" id="vehicleModal">
     <div class="modal-card">
       <button type="button" class="close-btn" id="closeVehicleModal">✕</button>
