@@ -13,8 +13,8 @@ const DEPOT = {
 };
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
-const ROAD_FACTOR = 1.3; // Fator de correção de malha viária urbana
-const MAX_STOPS_PER_VEHICLE = 10; // Limite diário de pontos por veículo
+const ROAD_FACTOR = 1.3;
+const MAX_STOPS_PER_VEHICLE = 10;
 
 let materialsChartInstance = null;
 let completionChartInstance = null;
@@ -91,12 +91,6 @@ function dateToISO(date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function normalizeDate(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
 function distanceKm(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -119,7 +113,6 @@ function statusBadge(status) {
   return `<span class="status status-${cleanStatus}">${escapeHTML(status)}</span>`;
 }
 
-// Verifica se o ponto de coleta é no Centro de Trairi (Raio aproximado de 2.5km do centro)
 function isCentroTrairi(lat, lng) {
   const centroLat = -3.2778;
   const centroLng = -39.2688;
@@ -127,7 +120,7 @@ function isCentroTrairi(lat, lng) {
 }
 
 // ============================================================
-// DASHBOARD COM MÉTRICAS E GRÁFICOS DE INDICADORES
+// DASHBOARD COM MÉTRICAS E GRÁFICOS
 // ============================================================
 
 function renderDashboard() {
@@ -138,14 +131,23 @@ function renderDashboard() {
   const percentRealizadas = total ? Math.round((realizadas / total) * 100) : 0;
   const percentNaoRealizadas = total ? Math.round((naoRealizadas / total) * 100) : 0;
 
-  document.getElementById("statPercentRealizadas").textContent = `${percentRealizadas}%`;
-  document.getElementById("statCountRealizadas").textContent = `${realizadas} coletas concluídas`;
+  const statRealizadas = document.getElementById("statPercentRealizadas");
+  if (statRealizadas) statRealizadas.textContent = `${percentRealizadas}%`;
+  
+  const countRealizadas = document.getElementById("statCountRealizadas");
+  if (countRealizadas) countRealizadas.textContent = `${realizadas} coletas concluídas`;
 
-  document.getElementById("statPercentNaoRealizadas").textContent = `${percentNaoRealizadas}%`;
-  document.getElementById("statCountNaoRealizadas").textContent = `${naoRealizadas} pendentes / canceladas`;
+  const statNaoRealizadas = document.getElementById("statPercentNaoRealizadas");
+  if (statNaoRealizadas) statNaoRealizadas.textContent = `${percentNaoRealizadas}%`;
+  
+  const countNaoRealizadas = document.getElementById("statCountNaoRealizadas");
+  if (countNaoRealizadas) countNaoRealizadas.textContent = `${naoRealizadas} pendentes / canceladas`;
 
-  document.getElementById("statEmRota").textContent = requests.filter(r => r.status === "EM ROTA").length;
-  document.getElementById("statTotal").textContent = total;
+  const statEmRota = document.getElementById("statEmRota");
+  if (statEmRota) statEmRota.textContent = requests.filter(r => r.status === "EM ROTA").length;
+  
+  const statTotal = document.getElementById("statTotal");
+  if (statTotal) statTotal.textContent = total;
 
   renderDashboardCharts(realizadas, naoRealizadas);
 
@@ -157,7 +159,6 @@ function renderDashboard() {
 function renderDashboardCharts(realizadas, naoRealizadas) {
   if (typeof Chart === "undefined") return;
 
-  // 1. CHART DE CATEGORIA DE RESÍDUOS
   const categoryTotals = {};
   requests.forEach(r => {
     if (!r.materials) return;
@@ -183,7 +184,6 @@ function renderDashboardCharts(realizadas, naoRealizadas) {
     });
   }
 
-  // 2. CHART DE PERCENTUAL DE CONCLUSÃO
   const ctxComp = document.getElementById("completionChart")?.getContext("2d");
   if (ctxComp) {
     if (completionChartInstance) completionChartInstance.destroy();
@@ -202,7 +202,7 @@ function renderDashboardCharts(realizadas, naoRealizadas) {
 }
 
 // ============================================================
-// CONVERSÃO E ESTIMATIVAS DE CARGA
+// CONVERSÃO E TABELAS
 // ============================================================
 
 function convertToLiters(qtyStr, unitStr, matStr = "") {
@@ -215,14 +215,30 @@ function convertToLiters(qtyStr, unitStr, matStr = "") {
   return qty;
 }
 
-function estimateWeightKg(qtyStr, unitStr, matStr = "") {
-  const qty = parseFloat(qtyStr) || 0;
-  if ((unitStr || "").toLowerCase().includes("kg")) return qty;
-  return convertToLiters(qtyStr, unitStr, matStr) * 0.15;
+function tableHTML(data, withActions = true) {
+  if (!data.length) return `<div class="empty-state"><h2>Nenhum registro encontrado</h2></div>`;
+  return `
+    <table>
+      <thead>
+        <tr><th>Código</th><th>Solicitante</th><th>Local</th><th>Materiais</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        ${data.map(r => `
+          <tr>
+            <td><strong>${escapeHTML(r.id)}</strong></td>
+            <td>${escapeHTML(r.name)}<br><small>${escapeHTML(r.phone)}</small></td>
+            <td>${escapeHTML(r.type)}</td>
+            <td>${escapeHTML(r.materials)} (${r.quantity} ${r.unit})</td>
+            <td>${statusBadge(r.status)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
 }
 
 // ============================================================
-// FORMULÁRIO COM DIAS E TURNOS FIXOS DE COLETA
+// MODAIS E FORMULÁRIOS
 // ============================================================
 
 function buildFormHTML(formId) {
@@ -238,9 +254,9 @@ function buildFormHTML(formId) {
       </div>
 
       <div class="form-group-block">
-        <label class="form-label">Dia e Turno Preferencial para Coleta *
+        <label class="form-label">Dia e Turno Preferencial *
           <select name="frequency" required class="big-select">
-            <option value="">Selecione a opção disponível...</option>
+            <option value="">Selecione...</option>
             <option value="Segunda (Tarde)">Segunda-feira (Tarde)</option>
             <option value="Terça (Tarde)">Terça-feira (Tarde)</option>
             <option value="Quarta (Tarde)">Quarta-feira (Tarde)</option>
@@ -254,16 +270,6 @@ function buildFormHTML(formId) {
         <div class="map-container" id="map-${formId}"></div>
         <input type="hidden" name="latitude" required>
         <input type="hidden" name="longitude" required>
-      </div>
-
-      <div class="form-group-block">
-        <label class="form-label">Resíduos para Coleta</label>
-        <div class="materials-grid">
-          <label><input type="checkbox" name="materials_list" value="Papel"> Papel / Papelão</label>
-          <label><input type="checkbox" name="materials_list" value="Plástico"> Plástico / PET</label>
-          <label><input type="checkbox" name="materials_list" value="Vidro"> Vidro</label>
-          <label><input type="checkbox" name="materials_list" value="Metal"> Metal</label>
-        </div>
       </div>
 
       <div class="form-group-block row-group" style="display:flex; gap:10px;">
@@ -284,34 +290,78 @@ function buildFormHTML(formId) {
   `;
 }
 
-// ============================================================
-// MAPA E SELEÇÃO DE LOCALIZAÇÃO
-// ============================================================
+function openModal() {
+  const container = document.getElementById("modalFormContainer");
+  if (!container) return;
+  container.innerHTML = buildFormHTML("modalForm");
+  initMap("modalForm");
+  document.getElementById("requestModal")?.classList.remove("hidden");
+}
+
+function closeModal() {
+  document.getElementById("requestModal")?.classList.add("hidden");
+}
 
 function initMap(formId) {
   const mapElement = document.getElementById(`map-${formId}`);
   if (!mapElement || typeof L === "undefined") return;
 
-  const map = L.map(mapElement).setView([DEPOT.lat, DEPOT.lng], 14);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+  setTimeout(() => {
+    const map = L.map(mapElement).setView([DEPOT.lat, DEPOT.lng], 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+    L.marker([DEPOT.lat, DEPOT.lng]).addTo(map).bindPopup(DEPOT.name);
 
-  // Marcador fixo do galpão da associação
-  L.marker([DEPOT.lat, DEPOT.lng]).addTo(map).bindPopup(DEPOT.name);
+    let marker = null;
+    map.on("click", e => {
+      if (marker) map.removeLayer(marker);
+      marker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
 
-  let marker = null;
-  map.on("click", e => {
-    if (marker) map.removeLayer(marker);
-    marker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
-
-    const form = document.getElementById(formId);
-    form.querySelector('input[name="latitude"]').value = e.latlng.lat.toFixed(6);
-    form.querySelector('input[name="longitude"]').value = e.latlng.lng.toFixed(6);
-  });
+      const form = document.getElementById(formId);
+      if (form) {
+        form.querySelector('input[name="latitude"]').value = e.latlng.lat.toFixed(6);
+        form.querySelector('input[name="longitude"]').value = e.latlng.lng.toFixed(6);
+      }
+    });
+  }, 200);
 }
 
 // ============================================================
-// ROTEIRIZAÇÃO DO DIA E REGRAS DE VEÍCULOS
+// CALENDÁRIO E ROTAS
 // ============================================================
+
+function renderCalendar() {
+  const container = document.getElementById("calendarContainer");
+  if (!container) return;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  let daysHTML = "";
+  for (let day = 1; day <= daysInMonth; day++) {
+    const count = requests.filter(r => r.status === "AGENDADA").length;
+    daysHTML += `
+      <div class="calendar-cell">
+        <div class="calendar-date-num">${day}</div>
+        ${count ? `<span class="calendar-badge">${count} coletas</span>` : ""}
+      </div>
+    `;
+  }
+
+  container.innerHTML = `
+    <div class="calendar-header">
+      <h2>${now.toLocaleString("pt-BR", { month: "long" })} / ${year}</h2>
+    </div>
+    <div class="calendar-grid">
+      <div class="calendar-day-head">Dom</div><div class="calendar-day-head">Seg</div>
+      <div class="calendar-day-head">Ter</div><div class="calendar-day-head">Qua</div>
+      <div class="calendar-day-head">Qui</div><div class="calendar-day-head">Sex</div>
+      <div class="calendar-day-head">Sáb</div>
+      ${daysHTML}
+    </div>
+  `;
+}
 
 function generateTodayRoutes() {
   const todayISO = dateToISO(new Date());
@@ -320,7 +370,6 @@ function generateTodayRoutes() {
   const unassigned = [...todayRequests];
   const routes = [];
 
-  // Otimização e Separação por regras do veículo
   vehicles.forEach(vehicle => {
     if (!unassigned.length) return;
 
@@ -328,15 +377,12 @@ function generateTodayRoutes() {
     let currentCapacityLiters = 0;
 
     for (let i = unassigned.length - 1; i >= 0; i--) {
-      if (assignedStops.length >= MAX_STOPS_PER_VEHICLE) break; // Limite de 10 pontos
+      if (assignedStops.length >= MAX_STOPS_PER_VEHICLE) break;
 
       const req = unassigned[i];
       const inCentro = isCentroTrairi(req.latitude, req.longitude);
 
-      // Regra 1: Triciclo exclusivo para o centro
       if (vehicle.type === "TRICICLO" && !inCentro) continue;
-
-      // Regra 2: Caminhão apenas para fora do centro
       if (vehicle.type === "CAMINHAO" && inCentro) continue;
 
       const liters = convertToLiters(req.quantity, req.unit, req.materials);
@@ -374,7 +420,7 @@ function renderTodayRoutes() {
   container.innerHTML = routes.map(route => `
     <div class="panel" style="margin-bottom:16px;">
       <h2>🚚 ${escapeHTML(route.vehicleName)} (${escapeHTML(route.vehiclePlate)})</h2>
-      <p>Total Paradas: ${route.stops.length} / 10 | Volume: ${route.totalLiters} L</p>
+      <p>Paradas: ${route.stops.length} / 10 | Volume: ${route.totalLiters} L</p>
       <table>
         <thead>
           <tr><th>Order</th><th>Solicitante</th><th>Local</th><th>Endereço / Mapa</th></tr>
@@ -384,7 +430,7 @@ function renderTodayRoutes() {
             <tr>
               <td><strong>#${idx + 1}</strong></td>
               <td>${escapeHTML(stop.name)}</td>
-              <td>${isCentroTrairi(stop.latitude, stop.longitude) ? "Centro de Trairi" : "Distrito / Periferia"}</td>
+              <td>${isCentroTrairi(stop.latitude, stop.longitude) ? "Centro de Trairi" : "Distrito"}</td>
               <td><a href="https://maps.google.com/?q=${stop.latitude},${stop.longitude}" target="_blank">Abrir Google Maps</a></td>
             </tr>
           `).join("")}
@@ -393,10 +439,6 @@ function renderTodayRoutes() {
     </div>
   `).join("");
 }
-
-// ============================================================
-// TELA EXCLUSIVA DO MOTORISTA (MODO APP)
-// ============================================================
 
 function renderDriverView() {
   const container = document.getElementById("driverRoutesContainer");
@@ -416,7 +458,7 @@ function renderDriverView() {
           <div style="padding:14px; background:var(--background); border-radius:8px; border:1px solid var(--border);">
             <h3>${idx + 1}. ${escapeHTML(stop.name)}</h3>
             <p><strong>Tel:</strong> ${escapeHTML(stop.phone)}</p>
-            <p><strong>Materiais:</strong> ${escapeHTML(stop.materials)} (${stop.quantity} ${stop.unit})</p>
+            <p><strong>Materiais:</strong> ${escapeHTML(stop.materials || "Recicláveis")} (${stop.quantity} ${stop.unit})</p>
             <div style="display:flex; gap:8px; margin-top:10px;">
               <a href="https://maps.google.com/?q=${stop.latitude},${stop.longitude}" target="_blank" class="primary-btn" style="text-decoration:none; font-size:12px;">🗺️ Navegar</a>
               <button class="secondary-btn" onclick="markAsCollected('${stop.id}')">✓ Confirmar Coleta</button>
@@ -440,51 +482,7 @@ function markAsCollected(reqId) {
 }
 
 // ============================================================
-// CALENDÁRIO / AGENDA DE COLETAS
-// ============================================================
-
-function renderCalendar() {
-  const container = document.getElementById("calendarContainer");
-  if (!container) return;
-
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  let daysHTML = "";
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const count = requests.filter(r => r.status === "AGENDADA").length;
-
-    daysHTML += `
-      <div class="calendar-cell">
-        <div class="calendar-date-num">${day}</div>
-        ${count ? `<span class="calendar-badge">${count} coletas</span>` : ""}
-      </div>
-    `;
-  }
-
-  container.innerHTML = `
-    <div class="calendar-header">
-      <h2>Mês Atual (${now.toLocaleString("pt-BR", { month: "long" })})</h2>
-    </div>
-    <div class="calendar-grid">
-      <div class="calendar-day-head">Dom</div>
-      <div class="calendar-day-head">Seg</div>
-      <div class="calendar-day-head">Ter</div>
-      <div class="calendar-day-head">Qua</div>
-      <div class="calendar-day-head">Qui</div>
-      <div class="calendar-day-head">Sex</div>
-      <div class="calendar-day-head">Sáb</div>
-      ${daysHTML}
-    </div>
-  `;
-}
-
-// ============================================================
-// NAVEGAÇÃO SPA E INICIALIZAÇÃO
+// NAVEGAÇÃO E INICIALIZAÇÃO SEGURA
 // ============================================================
 
 function showSection(sectionId) {
@@ -494,13 +492,52 @@ function showSection(sectionId) {
   const target = document.getElementById(sectionId);
   if (target) target.classList.add("active-section");
 
+  const navBtn = document.querySelector(`.nav-item[data-section="${sectionId}"]`);
+  if (navBtn) navBtn.classList.add("active");
+
   if (sectionId === "dashboard") renderDashboard();
   if (sectionId === "agenda") renderCalendar();
   if (sectionId === "rotas") renderTodayRoutes();
   if (sectionId === "driver-view") renderDriverView();
 }
 
+function bindClick(id, fn) {
+  const el = document.getElementById(id);
+  if (el) el.onclick = fn;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const section = btn.dataset.section;
+      if (section) showSection(section);
+    });
+  });
+
+  bindClick("menuToggle", () => {
+    document.getElementById("sidebar")?.classList.toggle("open");
+  });
+
+  bindClick("novaSolicitacaoBtn", openModal);
+  bindClick("novaSolicitacaoBtn2", openModal);
+  bindClick("closeModal", closeModal);
+  bindClick("closeClientModal", () => {
+    document.getElementById("clientModal")?.classList.add("hidden");
+  });
+  bindClick("closeVehicleModal", () => {
+    document.getElementById("vehicleModal")?.classList.add("hidden");
+  });
+
+  bindClick("shareDriverAppBtn", () => {
+    const driverUrl = `${window.location.origin}${window.location.pathname}?mode=driver`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(driverUrl);
+      toast("Link do App do Motorista copiado!");
+    } else {
+      prompt("Copie o link do motorista:", driverUrl);
+    }
+  });
+
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get("mode") === "driver") {
     document.body.classList.add("driver-mode");
@@ -508,16 +545,6 @@ document.addEventListener("DOMContentLoaded", () => {
   } else {
     renderDashboard();
   }
-
-  document.querySelectorAll(".nav-item").forEach(btn => {
-    btn.addEventListener("click", () => showSection(btn.dataset.section));
-  });
-
-  document.getElementById("shareDriverAppBtn")?.addEventListener("click", () => {
-    const driverUrl = `${window.location.origin}${window.location.pathname}?mode=driver`;
-    navigator.clipboard.writeText(driverUrl);
-    toast("Link do App do Motorista copiado!");
-  });
 });
 
 function toast(msg) {
