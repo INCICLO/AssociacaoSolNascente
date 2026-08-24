@@ -84,7 +84,36 @@ p { color: var(--muted); margin: 0; font-size: 13px; }
 .secondary-btn:hover { background: var(--light-blue); }
 .share-btn { background: var(--navy); color: #ffffff; }
 
-/* CARDS E TABELAS */
+/* CARDS E TABELAS (ESTILOS RESTAURADOS) */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card, .panel { background: white; border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); }
+.stat-card { padding: 20px; }
+.stat-card span { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; }
+.stat-card strong { display: block; color: var(--navy); font-size: 28px; font-weight: 800; margin: 6px 0 2px; }
+.stat-card small { color: var(--muted); font-size: 12px; }
+
+.panel { padding: 20px; margin-bottom: 20px; }
+.panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.filters { display: grid; grid-template-columns: 1fr 200px; gap: 12px; margin-bottom: 16px; }
+
+input, select, textarea {
+  width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; outline: none; background: white; color: var(--text); font-size: 14px;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(36, 42, 85, 0.1); }
+label { color: var(--navy); font-size: 13px; font-weight: 700; display: grid; gap: 6px; }
+
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; min-width: 600px; }
+th, td { padding: 12px 10px; border-bottom: 1px solid var(--border); text-align: left; font-size: 13px; }
+th { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; background: var(--background); }
+
+.status { display: inline-flex; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.status-nova { background: #fff0ea; color: var(--orange-dark); }
+.status-em-analise { background: #fff6dc; color: var(--warning); }
+.status-agendada { background: #e2eaf8; color: var(--navy); }
+.status-em-rota { background: #e8f5ee; color: var(--success); }
+.status-coletada, .status-finalizada { background: #e8f5ee; color: var(--success); }
+
 /* DESIGN DOS CARDS DE SELEÇÃO DE RESÍDUOS */
 .materials-grid {
   display: grid;
@@ -96,9 +125,9 @@ p { color: var(--muted); margin: 0; font-size: 13px; }
 .material-card {
   position: relative;
   cursor: pointer;
+  display: block;
 }
 
-/* Esconde a caixa padrão sem quebrar a acessibilidade */
 .material-card input[type="checkbox"] {
   position: absolute;
   opacity: 0;
@@ -106,8 +135,8 @@ p { color: var(--muted); margin: 0; font-size: 13px; }
   height: 0;
 }
 
-/* Aparência do Card */
 .material-card .card-content {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -133,14 +162,12 @@ p { color: var(--muted); margin: 0; font-size: 13px; }
   color: var(--navy);
 }
 
-/* Estado de Hover (Ao passar o mouse) */
 .material-card:hover .card-content {
   border-color: var(--orange);
   background: #fff8f5;
   transform: translateY(-2px);
 }
 
-/* Estado Selecionado (Checked) */
 .material-card input[type="checkbox"]:checked + .card-content {
   background: #fff0ea;
   border-color: var(--orange);
@@ -151,37 +178,26 @@ p { color: var(--muted); margin: 0; font-size: 13px; }
   color: var(--orange-dark);
 }
 
-/* Marca de seleção no canto superior do card ativado */
 .material-card input[type="checkbox"]:checked + .card-content::after {
   content: "✓";
   position: absolute;
-  top: 6px;
+  top: 4px;
   right: 8px;
   font-size: 12px;
   font-weight: 800;
   color: var(--orange);
 }
 
-@media (max-width: 480px) {
-  .materials-grid {
-    grid-template-columns: repeat(2, 1fr); /* 2 colunas perfeitas no celular */
-    gap: 8px;
-  }
-  
-  .material-card .card-content {
-    padding: 10px 8px;
-  }
-}
 /* ESTILOS DO FORMULÁRIO E MAPA */
 .form-group-block { background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
 .form-block-title { font-weight: 800; color: var(--navy); font-size: 14px; text-transform: uppercase; margin-bottom: 4px; display: block; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
-.materials-grid, .days-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
-.material-checkbox, .day-checkbox { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; cursor: pointer; }
+.days-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+.day-checkbox { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; cursor: pointer; }
 
 .hidden { display: none !important; }
 .map-container { height: 280px; width: 100%; border-radius: 8px; border: 1px solid var(--border); margin-top: 6px; }
 
-/* AJUSTE ORGANIZADO DAS LOGOS NO FORMULÁRIO PÚBLICO */
+/* FORMULÁRIO PÚBLICO E LOGOS */
 .public-container { max-width: 760px; margin: 0 auto; padding: 20px 12px 60px; }
 .public-header { text-align: center; background: white; padding: 24px 16px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; box-shadow: var(--shadow); }
 .partner-logos-container { display: flex; justify-content: center; align-items: center; gap: 24px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -217,4 +233,15 @@ body.public-mode .content, body.driver-mode .content { padding: 12px !important;
   .page-title { flex-direction: column; align-items: flex-start; }
   .action-buttons { width: 100%; justify-content: flex-start; }
   .partner-logo { max-height: 40px; }
+}
+
+@media (max-width: 480px) {
+  .materials-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  
+  .material-card .card-content {
+    padding: 10px 8px;
+  }
 }
