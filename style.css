@@ -117,11 +117,18 @@ th { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: upp
 /* ESTILOS DO FORMULÁRIO E MAPA */
 .form-group-block { background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
 .form-block-title { font-weight: 800; color: var(--navy); font-size: 14px; text-transform: uppercase; margin-bottom: 4px; display: block; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
-.materials-grid, .days-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.materials-grid, .days-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
 .material-checkbox, .day-checkbox { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; cursor: pointer; }
 
 .hidden { display: none !important; }
 .map-container { height: 280px; width: 100%; border-radius: 8px; border: 1px solid var(--border); margin-top: 6px; }
+
+/* AJUSTE ORGANIZADO DAS LOGOS NO FORMULÁRIO PÚBLICO */
+.public-container { max-width: 760px; margin: 0 auto; padding: 20px 12px 60px; }
+.public-header { text-align: center; background: white; padding: 24px 16px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; box-shadow: var(--shadow); }
+.partner-logos-container { display: flex; justify-content: center; align-items: center; gap: 24px; margin-bottom: 16px; flex-wrap: wrap; }
+.partner-logo { max-height: 50px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+.public-card { background: white; border-radius: 12px; padding: 24px 18px; border: 1px solid var(--border); box-shadow: var(--shadow); }
 
 /* MODAIS E TELAS ESPECIAIS */
 .modal { position: fixed; inset: 0; background: rgba(36, 42, 85, 0.6); z-index: 1000; display: grid; place-items: center; padding: 12px; }
@@ -151,4 +158,5 @@ body.public-mode .content, body.driver-mode .content { padding: 12px !important;
   .filters { grid-template-columns: 1fr; }
   .page-title { flex-direction: column; align-items: flex-start; }
   .action-buttons { width: 100%; justify-content: flex-start; }
+  .partner-logo { max-height: 40px; }
 }
