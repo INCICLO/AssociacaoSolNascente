@@ -241,6 +241,7 @@ function buildFormHTML(formId) {
           <input name="quantity" type="number" step="0.1" min="1" required placeholder="Quantidade" class="big-input">
           <select name="unit" required class="big-select">
             <option value="Sacos de 100L">Sacos de 100L</option>
+            <option value="Sacos de 100L">Sacos de 50L</option>
             <option value="Kg">Kg</option>
             <option value="BigBags">BigBags</option>
             <option value="Caixas">Caixas</option>
