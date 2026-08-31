@@ -20,7 +20,8 @@ const defaultRequests = [
     materials: "Papel, Papelão, Óleo de Cozinha Usado",
     quantity: "5",
     unit: "Sacos de 100L",
-    frequency: "Semanal (Sexta-feira)",
+    frequency: "1 vez por semana",
+    frequencyDetails: "Dia: Sexta-feira",
     notes: "Coleta no galpão lateral",
     status: "AGENDADA",
     createdAt: new Date().toISOString(),
@@ -174,7 +175,20 @@ function checkSpecialURL() {
   return false;
 }
 
+/* ============================================================
+   CONSTRUÇÃO DO FORMULÁRIO DINÂMICO
+   ============================================================ */
+
 function buildFormHTML(formId) {
+  const daysOptions = `
+    <option value="">Selecione o dia...</option>
+    <option value="Segunda-feira">Segunda-feira</option>
+    <option value="Terça-feira">Terça-feira</option>
+    <option value="Quarta-feira">Quarta-feira</option>
+    <option value="Quinta-feira">Quinta-feira</option>
+    <option value="Sexta-feira">Sexta-feira</option>
+  `;
+
   return `
     <form id="${formId}" class="simplified-form">
       <div class="form-group-block">
@@ -254,11 +268,57 @@ function buildFormHTML(formId) {
         <select name="frequency" id="frequencySelect" required class="big-select">
           <option value="">Selecione...</option>
           <option value="Única">Única</option>
-          <option value="Diária">Diária</option>
-          <option value="Semanal">Semanal</option>
+          <option value="1 vez por semana">1 vez por semana</option>
+          <option value="2 vezes por semana">2 vezes por semana</option>
+          <option value="Mensal">Mensal</option>
         </select>
+
+        <!-- OPÇÃO: ÚNICA -->
         <div id="singleDateWrap" class="hidden" style="margin-top:10px;">
-          <input type="date" name="preferred_date" id="preferredDateInput" class="big-input">
+          <label class="form-label">Data da Coleta *
+            <input type="date" name="preferred_date" id="preferredDateInput" class="big-input">
+          </label>
+        </div>
+
+        <!-- OPÇÃO: 1 VEZ POR SEMANA -->
+        <div id="onceAWeekWrap" class="hidden" style="margin-top:10px;">
+          <label class="form-label">Dia da Semana Preferencial *
+            <select name="weekly_day_1" class="big-select">
+              ${daysOptions}
+            </select>
+          </label>
+        </div>
+
+        <!-- OPÇÃO: 2 VEZES POR SEMANA -->
+        <div id="twiceAWeekWrap" class="hidden" style="margin-top:10px; display:flex; flex-direction:column; gap:10px;">
+          <label class="form-label">Primeiro Dia da Semana *
+            <select name="twice_day_1" class="big-select">
+              ${daysOptions}
+            </select>
+          </label>
+          <label class="form-label">Segundo Dia da Semana *
+            <select name="twice_day_2" class="big-select">
+              ${daysOptions}
+            </select>
+          </label>
+        </div>
+
+        <!-- OPÇÃO: MENSAL -->
+        <div id="monthlyWrap" class="hidden" style="margin-top:10px; display:flex; flex-direction:column; gap:10px;">
+          <label class="form-label">Semana do Mês *
+            <select name="monthly_week" class="big-select">
+              <option value="">Selecione a semana...</option>
+              <option value="1ª semana">1ª semana</option>
+              <option value="2ª semana">2ª semana</option>
+              <option value="3ª semana">3ª semana</option>
+              <option value="4ª semana">4ª semana</option>
+            </select>
+          </label>
+          <label class="form-label">Dia da Semana Preferencial *
+            <select name="monthly_day" class="big-select">
+              ${daysOptions}
+            </select>
+          </label>
         </div>
       </div>
 
@@ -304,11 +364,20 @@ function initFormEvents(formId) {
     });
   }
 
+  // CONTROLE DINÂMICO DOS CAMPOS DE FREQUÊNCIA
   const frequencySelect = form.querySelector("#frequencySelect");
   const singleDateWrap = form.querySelector("#singleDateWrap");
-  if (frequencySelect && singleDateWrap) {
+  const onceAWeekWrap = form.querySelector("#onceAWeekWrap");
+  const twiceAWeekWrap = form.querySelector("#twiceAWeekWrap");
+  const monthlyWrap = form.querySelector("#monthlyWrap");
+
+  if (frequencySelect) {
     frequencySelect.addEventListener("change", () => {
-      singleDateWrap.classList.toggle("hidden", frequencySelect.value !== "Única");
+      const val = frequencySelect.value;
+      singleDateWrap?.classList.toggle("hidden", val !== "Única");
+      onceAWeekWrap?.classList.toggle("hidden", val !== "1 vez por semana");
+      twiceAWeekWrap?.classList.toggle("hidden", val !== "2 vezes por semana");
+      monthlyWrap?.classList.toggle("hidden", val !== "Mensal");
     });
   }
 
@@ -330,6 +399,18 @@ function initFormEvents(formId) {
       return;
     }
 
+    // MONTA O RESUMO DA FREQUÊNCIA DE ACORDO COM A SELEÇÃO
+    let frequencyDetails = "";
+    if (data.frequency === "Única") {
+      frequencyDetails = data.preferred_date ? `Data: ${data.preferred_date}` : "";
+    } else if (data.frequency === "1 vez por semana") {
+      frequencyDetails = data.weekly_day_1 ? `Dia: ${data.weekly_day_1}` : "";
+    } else if (data.frequency === "2 vezes por semana") {
+      frequencyDetails = `Dias: ${data.twice_day_1 || "-"} e ${data.twice_day_2 || "-"}`;
+    } else if (data.frequency === "Mensal") {
+      frequencyDetails = `${data.monthly_week || "-"} - ${data.monthly_day || "-"}`;
+    }
+
     const request = {
       id: nextId(),
       name: data.name,
@@ -342,6 +423,7 @@ function initFormEvents(formId) {
       quantity: data.quantity,
       unit: data.unit,
       frequency: data.frequency,
+      frequencyDetails: frequencyDetails,
       notes: data.notes || "",
       status: "NOVA",
       createdAt: new Date().toISOString(),
@@ -352,7 +434,7 @@ function initFormEvents(formId) {
     save();
 
     if (document.body.classList.contains("public-mode")) {
-      form.innerHTML = `<h2>Solicitação Registrada!</h2><p>Número: <strong>${request.id}</strong></p>`;
+      form.innerHTML = `<h2>Solicitação Registrada!</h2><p>Número de Protocolo: <strong>${request.id}</strong></p>`;
     } else {
       closeModal();
       renderDashboard();
