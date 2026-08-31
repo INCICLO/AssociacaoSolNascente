@@ -8,9 +8,6 @@ const DEPOT = {
   name: "Base / Galpão da Associação"
 };
 
-const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
-const ROAD_FACTOR = 1.3;
-
 const defaultRequests = [
   {
     id: "SOL-2026-000001",
@@ -72,12 +69,6 @@ function nextId() {
   return `SOL-${year}-${(Math.max(0, ...numbers) + 1).toString().padStart(6, "0")}`;
 }
 
-function nextRouteId() {
-  const year = new Date().getFullYear();
-  const numbers = generatedRoutes.map(r => Number((r.id || "").split("-").pop())).filter(Number.isFinite);
-  return `ROT-${year}-${(Math.max(0, ...numbers) + 1).toString().padStart(6, "0")}`;
-}
-
 function escapeHTML(value = "") {
   return String(value).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
 }
@@ -90,32 +81,52 @@ function statusBadge(status) {
   return `<span class="status status-${statusClass(escapeHTML(status))}">${escapeHTML(status)}</span>`;
 }
 
-function formatDateBR(date) { return date.toLocaleDateString("pt-BR"); }
+/* ============================================================
+   FUNÇÕES DE CÓPIA DE LINK (PÚBLICO E MOTORISTA)
+   ============================================================ */
 
-function dateToISO(date) {
-  const d = new Date(date);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function copyToClipboard(text, successMessage) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text)
+      .then(() => toast(successMessage))
+      .catch(() => fallbackCopy(text, successMessage));
+  } else {
+    fallbackCopy(text, successMessage);
+  }
 }
 
-function normalizeDate(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
+function fallbackCopy(text, successMessage) {
+  const input = document.createElement("input");
+  input.value = text;
+  document.body.appendChild(input);
+  input.select();
+  try {
+    document.execCommand("copy");
+    toast(successMessage);
+  } catch (err) {
+    prompt("Copie manualmente o link abaixo:", text);
+  } finally {
+    document.body.removeChild(input);
+  }
 }
 
-function addDays(date, days) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
+function copyPublicLink() {
+  const url = new URL(window.location.href);
+  url.searchParams.set("form", "public");
+  url.searchParams.delete("mode");
+  copyToClipboard(url.toString(), "🔗 Link do formulário público copiado!");
 }
 
-function distanceKm(lat1, lng1, lat2, lng2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))) * ROAD_FACTOR;
+function copyDriverLink() {
+  const url = new URL(window.location.href);
+  url.searchParams.set("mode", "driver");
+  url.searchParams.delete("form");
+  copyToClipboard(url.toString(), "📱 Link do App Motorista copiado!");
 }
+
+/* ============================================================
+   NAVEGAÇÃO E SEÇÕES
+   ============================================================ */
 
 function showSection(sectionId) {
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active-section"));
@@ -474,7 +485,12 @@ function renderClients() {
   if (container) container.innerHTML = `<p>Total de Clientes: ${requests.length}</p>`;
 }
 
+/* ============================================================
+   INICIALIZAÇÃO DE EVENTOS
+   ============================================================ */
+
 document.addEventListener("DOMContentLoaded", () => {
+  // Navegação
   document.querySelectorAll(".nav-item").forEach(btn => {
     btn.addEventListener("click", () => showSection(btn.dataset.section));
   });
@@ -483,9 +499,14 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("sidebar").classList.toggle("open");
   });
 
+  // Botões de Modal
   document.getElementById("novaSolicitacaoBtn")?.addEventListener("click", openModal);
   document.getElementById("novaSolicitacaoBtn2")?.addEventListener("click", openModal);
   document.getElementById("closeModal")?.addEventListener("click", closeModal);
+
+  // BOTÕES DE CÓPIA DE LINK
+  document.getElementById("shareFormBtn")?.addEventListener("click", copyPublicLink);
+  document.getElementById("shareDriverAppBtn")?.addEventListener("click", copyDriverLink);
 
   if (!checkSpecialURL()) {
     renderDashboard();
